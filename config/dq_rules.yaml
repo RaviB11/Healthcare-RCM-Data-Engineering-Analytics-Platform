@@ -1,0 +1,175 @@
+# ---------------------------------------------------------------------------
+# Data quality expectations, applied at the Bronze -> Silver boundary.
+#
+# severity: blocking  -> row is quarantined, never reaches the warehouse
+# severity: warning   -> row passes, violation is counted and reported
+# ---------------------------------------------------------------------------
+
+datasets:
+
+  silver_patients:
+    rules:
+      - name: patient_id_not_null
+        type: not_null
+        columns: [patient_id]
+        severity: blocking
+      # NOT unique on patient_id alone: this feeds a Type 2 dimension, so
+      # the natural key legitimately repeats once per version. What must
+      # be unique is the key + the source change timestamp.
+      - name: patient_version_unique
+        type: unique
+        columns: [patient_id, source_updated_at]
+        severity: blocking
+      - name: mrn_not_null
+        type: not_null
+        columns: [mrn]
+        severity: blocking
+      - name: gender_in_domain
+        type: accepted_values
+        columns: [gender]
+        values: ["M", "F", "U"]
+        severity: warning
+      - name: dob_is_plausible
+        type: expression
+        expression: "date_of_birth IS NULL OR (date_of_birth > DATE'1900-01-01' AND date_of_birth <= current_date())"
+        severity: blocking
+      - name: zip_format_valid
+        type: regex
+        columns: [zip_code]
+        pattern: "^[0-9]{5}(-[0-9]{4})?$"
+        severity: warning
+      - name: state_present
+        type: not_null
+        columns: [state]
+        severity: warning
+
+  silver_encounters:
+    rules:
+      - name: encounter_id_not_null
+        type: not_null
+        columns: [encounter_id]
+        severity: blocking
+      - name: encounter_id_unique
+        type: unique
+        columns: [encounter_id]
+        severity: blocking
+      - name: patient_id_not_null
+        type: not_null
+        columns: [patient_id]
+        severity: blocking
+      - name: discharge_after_admit
+        type: expression
+        expression: "discharge_date IS NULL OR admit_date IS NULL OR discharge_date >= admit_date"
+        severity: blocking
+      - name: encounter_type_in_domain
+        type: accepted_values
+        columns: [encounter_type]
+        values: ["Inpatient", "Outpatient", "Emergency", "Observation", "Telehealth"]
+        severity: warning
+      - name: length_of_stay_reasonable
+        type: range
+        columns: [length_of_stay_days]
+        min: 0
+        max: 365
+        allow_null: true
+        severity: warning
+
+  silver_claims:
+    rules:
+      - name: claim_id_not_null
+        type: not_null
+        columns: [claim_id]
+        severity: blocking
+      - name: claim_id_unique
+        type: unique
+        columns: [claim_id]
+        severity: blocking
+      - name: total_charge_positive
+        type: range
+        columns: [total_charge_amount]
+        min: 0
+        max: 5000000
+        severity: blocking
+      - name: allowed_not_exceeding_charge
+        type: expression
+        expression: "allowed_amount IS NULL OR total_charge_amount IS NULL OR allowed_amount <= total_charge_amount + 0.01"
+        severity: warning
+      - name: claim_status_in_domain
+        type: accepted_values
+        columns: [claim_status]
+        values: ["PAID", "PARTIALLY_PAID", "DENIED", "IN_PROCESS", "SUBMITTED", "APPEALED"]
+        severity: blocking
+      - name: submission_after_service
+        type: expression
+        expression: "submission_date IS NULL OR service_date IS NULL OR submission_date >= service_date"
+        severity: warning
+      - name: payer_exists
+        type: referential
+        columns: [payer_id]
+        reference: payers
+        reference_column: payer_id
+        severity: blocking
+
+  silver_transactions:
+    rules:
+      - name: transaction_id_not_null
+        type: not_null
+        columns: [transaction_id]
+        severity: blocking
+      - name: transaction_type_in_domain
+        type: accepted_values
+        columns: [transaction_type]
+        values: ["CHARGE", "INSURANCE_PAYMENT", "PATIENT_PAYMENT",
+                 "CONTRACTUAL_ADJUSTMENT", "WRITEOFF", "REFUND"]
+        severity: blocking
+      - name: charge_sign_convention
+        type: expression
+        expression: "NOT (transaction_type = 'CHARGE' AND transaction_amount < 0)"
+        severity: blocking
+      - name: payment_sign_convention
+        type: expression
+        expression: "NOT (transaction_type LIKE '%PAYMENT' AND transaction_amount > 0)"
+        severity: blocking
+      - name: post_date_not_future
+        type: expression
+        expression: "post_date IS NULL OR post_date <= current_date()"
+        severity: warning
+
+  silver_claim_lines:
+    rules:
+      - name: claim_line_id_unique
+        type: unique
+        columns: [claim_line_id]
+        severity: blocking
+      - name: cpt_code_format
+        type: regex
+        columns: [cpt_code]
+        pattern: "^[0-9]{4}[0-9A-Z]$"
+        severity: blocking
+      - name: units_positive
+        type: range
+        columns: [units]
+        min: 1
+        max: 999
+        severity: blocking
+      - name: line_charge_non_negative
+        type: range
+        columns: [line_charge_amount]
+        min: 0
+        severity: blocking
+
+  silver_remittance:
+    rules:
+      - name: remittance_id_unique
+        type: unique
+        columns: [remittance_id]
+        severity: blocking
+      - name: paid_not_exceeding_allowed
+        type: expression
+        expression: "paid_amount <= allowed_amount + 0.01"
+        severity: warning
+      - name: denied_flag_boolean
+        type: accepted_values
+        columns: [denied_flag]
+        values: ["0", "1"]
+        severity: warning

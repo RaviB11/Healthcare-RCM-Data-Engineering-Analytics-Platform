@@ -1,0 +1,97 @@
+carc_code,carc_description,denial_category,is_appealable,is_preventable,payer_name,payer_group,denial_count,denied_charges,at_risk_balance,avg_age_days,recoverable_value
+CO-16,Claim/service lacks information or has submission/billing error,Technical,true,true,Blue Cross Blue Shield,Commercial,35,266510.64,172849.39,379.8333333333333,172849.39
+CO-50,"Non-covered service, not deemed a medical necessity",Medical Necessity,true,false,Workers Compensation,Workers Comp,32,352976.28,164333.59,353.07142857142856,164333.59
+CO-16,Claim/service lacks information or has submission/billing error,Technical,true,true,Medicare Part B,Government,44,219905.11,142409.87,286.625,142409.87
+CO-16,Claim/service lacks information or has submission/billing error,Technical,true,true,Cigna,Commercial,40,254513.43,120378.61,344.1363636363636,120378.61
+CO-197,Precertification/authorization absent,Authorization,true,true,Blue Cross Blue Shield,Commercial,26,195841.02,103174.26,341.0,103174.26
+CO-197,Precertification/authorization absent,Authorization,true,true,Medicaid State Plan,Government,22,185991.41,95434.07,341.1666666666667,95434.07
+CO-50,"Non-covered service, not deemed a medical necessity",Medical Necessity,true,false,Blue Cross Blue Shield,Commercial,26,233919.18,89026.36,362.4166666666667,89026.36
+CO-16,Claim/service lacks information or has submission/billing error,Technical,true,true,Aetna,Commercial,38,223491.24,87549.16,326.42857142857144,87549.16
+CO-50,"Non-covered service, not deemed a medical necessity",Medical Necessity,true,false,Aetna,Commercial,24,175061.71,76975.93,282.7857142857143,76975.93
+CO-18,Exact duplicate claim or service,Duplicate,true,true,Medicare Part B,Government,18,162677.54,73740.06,262.0,73740.06
+CO-18,Exact duplicate claim or service,Duplicate,true,true,UnitedHealthcare,Commercial,19,219251.59,68464.11,322.54545454545456,68464.11
+CO-50,"Non-covered service, not deemed a medical necessity",Medical Necessity,true,false,UnitedHealthcare,Commercial,29,169402.30,65856.77,276.6,65856.77
+CO-18,Exact duplicate claim or service,Duplicate,true,true,Cigna,Commercial,20,157515.72,65107.39,304.85714285714283,65107.39
+CO-16,Claim/service lacks information or has submission/billing error,Technical,true,true,UnitedHealthcare,Commercial,33,182314.41,64190.89,303.11764705882354,64190.89
+CO-18,Exact duplicate claim or service,Duplicate,true,true,Humana Medicare Advantage,Government,14,148471.24,63738.65,268.25,63738.65
+CO-18,Exact duplicate claim or service,Duplicate,true,true,Blue Cross Blue Shield,Commercial,22,99617.01,60089.76,185.84615384615384,60089.76
+CO-16,Claim/service lacks information or has submission/billing error,Technical,true,true,Medicaid State Plan,Government,31,287682.20,55296.91,340.4166666666667,55296.91
+CO-50,"Non-covered service, not deemed a medical necessity",Medical Necessity,true,false,Medicaid State Plan,Government,20,116316.52,53753.57,316.1,53753.57
+CO-197,Precertification/authorization absent,Authorization,true,true,Tricare,Government,28,218288.48,52929.41,314.6666666666667,52929.41
+CO-16,Claim/service lacks information or has submission/billing error,Technical,true,true,Tricare,Government,32,166664.48,51937.49,328.0,51937.49
+CO-197,Precertification/authorization absent,Authorization,true,true,Cigna,Commercial,27,139361.46,47829.06,236.55555555555554,47829.06
+CO-197,Precertification/authorization absent,Authorization,true,true,Humana Medicare Advantage,Government,25,142576.68,45793.73,337.6,45793.73
+CO-197,Precertification/authorization absent,Authorization,true,true,Workers Compensation,Workers Comp,26,137862.64,45563.76,210.3,45563.76
+CO-16,Claim/service lacks information or has submission/billing error,Technical,true,true,Humana Medicare Advantage,Government,27,137929.95,44579.43,283.7857142857143,44579.43
+CO-109,Claim not covered by this payer/contractor,Coordination of Benefits,true,false,Cigna,Commercial,14,85288.66,44422.07,349.6666666666667,44422.07
+CO-109,Claim not covered by this payer/contractor,Coordination of Benefits,true,false,Tricare,Government,17,118438.56,43963.96,328.57142857142856,43963.96
+CO-109,Claim not covered by this payer/contractor,Coordination of Benefits,true,false,Workers Compensation,Workers Comp,14,116937.63,41399.18,340.125,41399.18
+CO-197,Precertification/authorization absent,Authorization,true,true,UnitedHealthcare,Commercial,28,158888.79,34909.16,333.375,34909.16
+CO-18,Exact duplicate claim or service,Duplicate,true,true,Aetna,Commercial,13,54831.18,34653.22,357.6666666666667,34653.22
+CO-197,Precertification/authorization absent,Authorization,true,true,Aetna,Commercial,25,115173.45,30351.78,251.41666666666666,30351.78
+CO-16,Claim/service lacks information or has submission/billing error,Technical,true,true,Workers Compensation,Workers Comp,39,135925.80,30339.79,311.9375,30339.79
+CO-18,Exact duplicate claim or service,Duplicate,true,true,Workers Compensation,Workers Comp,18,73825.02,27482.01,304.90909090909093,27482.01
+CO-50,"Non-covered service, not deemed a medical necessity",Medical Necessity,true,false,Cigna,Commercial,21,184459.14,27445.01,403.75,27445.01
+CO-109,Claim not covered by this payer/contractor,Coordination of Benefits,true,false,UnitedHealthcare,Commercial,19,132486.98,24878.02,263.8888888888889,24878.02
+CO-50,"Non-covered service, not deemed a medical necessity",Medical Necessity,true,false,Tricare,Government,16,56385.77,23156.64,223.2,23156.64
+CO-109,Claim not covered by this payer/contractor,Coordination of Benefits,true,false,Blue Cross Blue Shield,Commercial,16,41822.43,22464.37,404.8888888888889,22464.37
+CO-50,"Non-covered service, not deemed a medical necessity",Medical Necessity,true,false,Humana Medicare Advantage,Government,14,123820.54,21498.19,338.4,21498.19
+CO-197,Precertification/authorization absent,Authorization,true,true,Medicare Part B,Government,18,47965.32,18652.13,318.25,18652.13
+CO-50,"Non-covered service, not deemed a medical necessity",Medical Necessity,true,false,Medicare Part B,Government,17,41517.79,17523.55,172.0,17523.55
+CO-109,Claim not covered by this payer/contractor,Coordination of Benefits,true,false,Medicare Part B,Government,9,30177.15,13727.89,236.6,13727.89
+CO-18,Exact duplicate claim or service,Duplicate,true,true,Medicaid State Plan,Government,7,36995.14,13570.36,314.6666666666667,13570.36
+CO-109,Claim not covered by this payer/contractor,Coordination of Benefits,true,false,Medicaid State Plan,Government,9,47835.86,11054.09,267.25,11054.09
+CO-109,Claim not covered by this payer/contractor,Coordination of Benefits,true,false,Humana Medicare Advantage,Government,11,46379.03,10816.25,349.0,10816.25
+CO-109,Claim not covered by this payer/contractor,Coordination of Benefits,true,false,Aetna,Commercial,15,74434.55,5660.34,185.25,5660.34
+CO-16,Claim/service lacks information or has submission/billing error,Technical,true,true,Self Pay,Self Pay,4,27506.59,2752.83,410.6666666666667,2752.83
+CO-18,Exact duplicate claim or service,Duplicate,true,true,Tricare,Government,7,28680.40,1332.06,309.4,1332.06
+CO-197,Precertification/authorization absent,Authorization,true,true,Self Pay,Self Pay,3,9229.53,392.44,531.0,392.44
+PR-1,Deductible amount,Patient Responsibility,false,false,Medicaid State Plan,Government,22,120881.69,59477.19,253.9090909090909,0.00
+CO-45,Charge exceeds fee schedule/maximum allowable,Contractual,false,false,Workers Compensation,Workers Comp,15,64335.62,27096.38,340.7,0.00
+PR-1,Deductible amount,Patient Responsibility,false,false,Blue Cross Blue Shield,Commercial,25,165187.57,10241.34,187.16666666666666,0.00
+PR-2,Coinsurance amount,Patient Responsibility,false,false,Aetna,Commercial,12,76023.90,41389.16,325.42857142857144,0.00
+CO-45,Charge exceeds fee schedule/maximum allowable,Contractual,false,false,Self Pay,Self Pay,1,8643.24,1815.08,703.0,0.00
+CO-29,The time limit for filing has expired,Timely Filing,false,true,Medicaid State Plan,Government,14,64970.99,5560.00,421.2,0.00
+PR-2,Coinsurance amount,Patient Responsibility,false,false,Blue Cross Blue Shield,Commercial,26,129399.86,36671.44,170.53846153846155,0.00
+PR-2,Coinsurance amount,Patient Responsibility,false,false,Workers Compensation,Workers Comp,17,55363.95,44664.64,343.09090909090907,0.00
+PR-2,Coinsurance amount,Patient Responsibility,false,false,Humana Medicare Advantage,Government,15,77279.22,18327.61,210.5,0.00
+CO-97,Benefit for this service is included in another service already adjudicated,Bundling,false,false,Medicare Part B,Government,30,214609.74,68867.33,327.53846153846155,0.00
+CO-97,Benefit for this service is included in another service already adjudicated,Bundling,false,false,Self Pay,Self Pay,2,2038.64,56.60,613.0,0.00
+PR-1,Deductible amount,Patient Responsibility,false,false,Self Pay,Self Pay,3,17008.74,3230.04,447.0,0.00
+CO-45,Charge exceeds fee schedule/maximum allowable,Contractual,false,false,UnitedHealthcare,Commercial,14,170426.40,84823.56,301.5,0.00
+CO-97,Benefit for this service is included in another service already adjudicated,Bundling,false,false,Medicaid State Plan,Government,25,82488.33,25860.53,308.6666666666667,0.00
+CO-29,The time limit for filing has expired,Timely Filing,false,true,Tricare,Government,14,45481.73,36025.03,309.2,0.00
+CO-29,The time limit for filing has expired,Timely Filing,false,true,Workers Compensation,Workers Comp,21,72065.93,49154.78,303.2857142857143,0.00
+PR-2,Coinsurance amount,Patient Responsibility,false,false,Tricare,Government,11,88017.51,41284.14,346.8,0.00
+CO-97,Benefit for this service is included in another service already adjudicated,Bundling,false,false,Humana Medicare Advantage,Government,23,210748.91,26875.24,423.44444444444446,0.00
+CO-29,The time limit for filing has expired,Timely Filing,false,true,Cigna,Commercial,16,100795.92,75891.03,330.25,0.00
+CO-29,The time limit for filing has expired,Timely Filing,false,true,Medicare Part B,Government,13,139816.13,24710.78,311.3333333333333,0.00
+PR-1,Deductible amount,Patient Responsibility,false,false,Cigna,Commercial,30,165313.84,37253.48,337.8333333333333,0.00
+CO-45,Charge exceeds fee schedule/maximum allowable,Contractual,false,false,Humana Medicare Advantage,Government,15,110002.06,21089.74,401.6666666666667,0.00
+PR-1,Deductible amount,Patient Responsibility,false,false,Aetna,Commercial,26,216840.70,44870.25,277.875,0.00
+CO-45,Charge exceeds fee schedule/maximum allowable,Contractual,false,false,Aetna,Commercial,17,46499.98,10967.80,167.33333333333334,0.00
+CO-97,Benefit for this service is included in another service already adjudicated,Bundling,false,false,Cigna,Commercial,33,248812.59,89087.36,343.64285714285717,0.00
+PR-2,Coinsurance amount,Patient Responsibility,false,false,UnitedHealthcare,Commercial,22,202259.60,92060.95,280.6,0.00
+CO-97,Benefit for this service is included in another service already adjudicated,Bundling,false,false,Aetna,Commercial,30,153854.33,83057.11,375.5,0.00
+CO-97,Benefit for this service is included in another service already adjudicated,Bundling,false,false,Workers Compensation,Workers Comp,20,158141.44,34720.82,285.7142857142857,0.00
+CO-97,Benefit for this service is included in another service already adjudicated,Bundling,false,false,Tricare,Government,19,104714.53,38338.33,252.11111111111111,0.00
+CO-97,Benefit for this service is included in another service already adjudicated,Bundling,false,false,UnitedHealthcare,Commercial,32,196700.11,109994.84,335.125,0.00
+CO-29,The time limit for filing has expired,Timely Filing,false,true,UnitedHealthcare,Commercial,19,185489.41,61420.48,259.6,0.00
+PR-1,Deductible amount,Patient Responsibility,false,false,Humana Medicare Advantage,Government,39,130211.68,51902.58,351.5,0.00
+PR-1,Deductible amount,Patient Responsibility,false,false,UnitedHealthcare,Commercial,20,59753.72,15008.18,423.7,0.00
+PR-1,Deductible amount,Patient Responsibility,false,false,Tricare,Government,20,161064.53,84788.24,336.5,0.00
+CO-18,Exact duplicate claim or service,Duplicate,true,true,Self Pay,Self Pay,1,1206.84,0.00,,0.00
+CO-29,The time limit for filing has expired,Timely Filing,false,true,Humana Medicare Advantage,Government,17,63323.05,30118.83,334.0,0.00
+CO-45,Charge exceeds fee schedule/maximum allowable,Contractual,false,false,Medicaid State Plan,Government,16,68675.53,28632.61,364.8181818181818,0.00
+CO-97,Benefit for this service is included in another service already adjudicated,Bundling,false,false,Blue Cross Blue Shield,Commercial,32,191767.89,52183.62,268.88235294117646,0.00
+CO-45,Charge exceeds fee schedule/maximum allowable,Contractual,false,false,Tricare,Government,12,73151.21,22169.28,421.5,0.00
+PR-1,Deductible amount,Patient Responsibility,false,false,Workers Compensation,Workers Comp,24,162052.62,54365.53,345.4,0.00
+PR-2,Coinsurance amount,Patient Responsibility,false,false,Medicaid State Plan,Government,12,45644.08,15100.57,300.0,0.00
+PR-1,Deductible amount,Patient Responsibility,false,false,Medicare Part B,Government,25,161725.17,61245.26,298.84615384615387,0.00
+CO-45,Charge exceeds fee schedule/maximum allowable,Contractual,false,false,Blue Cross Blue Shield,Commercial,13,67678.48,24370.49,431.0,0.00
+CO-45,Charge exceeds fee schedule/maximum allowable,Contractual,false,false,Medicare Part B,Government,12,76931.79,62156.98,237.45454545454547,0.00
+CO-29,The time limit for filing has expired,Timely Filing,false,true,Blue Cross Blue Shield,Commercial,25,93566.35,50170.02,327.15384615384613,0.00
+PR-2,Coinsurance amount,Patient Responsibility,false,false,Medicare Part B,Government,17,104679.49,48661.62,415.625,0.00
+CO-29,The time limit for filing has expired,Timely Filing,false,true,Aetna,Commercial,19,136734.90,68751.89,387.0,0.00
+PR-2,Coinsurance amount,Patient Responsibility,false,false,Cigna,Commercial,17,93120.92,10713.91,527.1428571428571,0.00
+CO-45,Charge exceeds fee schedule/maximum allowable,Contractual,false,false,Cigna,Commercial,17,62891.10,16951.72,341.0,0.00

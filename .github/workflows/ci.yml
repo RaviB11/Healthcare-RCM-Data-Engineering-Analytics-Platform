@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Tests and pipeline smoke run
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java (Spark requires a JVM)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint
+        run: |
+          ruff check src/ tests/
+          black --check src/ tests/
+
+      - name: Unit tests
+        run: pytest tests/ -q --cov=src --cov-report=term-missing
+
+      # A green unit-test suite on a pipeline that has never run end to end
+      # proves very little, so CI builds the whole lake at reduced scale.
+      - name: End-to-end pipeline (reduced scale)
+        run: |
+          python -m src.generators.generate_synthetic_data --out data/landing --scale 0.15
+          python -m src.bronze.ingest_to_bronze
+          python -m src.silver.build_silver
+          python -m src.gold.build_gold
+
+      - name: Execute analytics SQL against the gold layer
+        run: python -m src.common.run_sql --check
+
+      - name: Upload quarantined rows for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quarantine
+          path: data/quarantine/
+          if-no-files-found: ignore
+
+  validate-infra:
+    name: Validate infrastructure definitions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Terraform format and validate
+        working-directory: aws/terraform
+        run: |
+          terraform fmt -check -recursive
+          terraform init -backend=false
+          terraform validate
+
+      - name: Validate Step Functions definition
+        run: python -c "import json; json.load(open('aws/stepfunctions/rcm_pipeline.asl.json'))"

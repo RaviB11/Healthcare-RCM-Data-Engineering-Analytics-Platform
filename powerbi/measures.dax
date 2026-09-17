@@ -1,0 +1,206 @@
+// ===========================================================================
+// Healthcare RCM - DAX measure library
+//
+// Create a dedicated "_Measures" table (Enter Data, one dummy column, hidden)
+// and place every measure there so the field list stays navigable.
+//
+// Conventions used throughout:
+//   * DIVIDE() everywhere, never "/", so a zero denominator yields BLANK
+//     rather than an error that blanks out the whole visual.
+//   * Rate denominators are ADJUDICATED claims. The current month is always
+//     mid-adjudication; dividing by all submitted claims makes it look like a
+//     collapse every single month.
+//   * Point-in-time A/R comes from FactARSnapshot, never from summing the
+//     residual balance on FactClaim, so the dashboard ties to the aged trial
+//     balance finance already trusts.
+// ===========================================================================
+
+
+// ---------------------------------------------------------------------------
+// BASE MEASURES
+// ---------------------------------------------------------------------------
+
+Gross Charges = SUM ( FactClaim[total_charge_amount] )
+
+Allowed Amount = SUM ( FactClaim[allowed_amount] )
+
+Contractual Adjustments = SUM ( FactClaim[contractual_adjustment_amount] )
+
+Total Payments = SUM ( FactClaim[total_payment_amount] )
+
+Insurance Payments = SUM ( FactClaim[insurance_payment_amount] )
+
+Patient Payments = SUM ( FactClaim[patient_payment_amount] )
+
+Claim Count = COUNTROWS ( FactClaim )
+
+Adjudicated Claims =
+CALCULATE ( [Claim Count], FactClaim[is_adjudicated] = TRUE )
+
+Denied Claims =
+CALCULATE ( [Claim Count], FactClaim[is_denied] = TRUE )
+
+Clean Claims =
+CALCULATE ( [Claim Count], FactClaim[is_clean_claim] = TRUE )
+
+
+// ---------------------------------------------------------------------------
+// CORE RCM KPIs
+// ---------------------------------------------------------------------------
+
+// Denial Rate - denied over ADJUDICATED, not over everything submitted.
+Denial Rate = DIVIDE ( [Denied Claims], [Adjudicated Claims] )
+
+// Clean Claim Rate - adjudicated with no denial reason code on first pass.
+// PR-1 / PR-2 (deductible, coinsurance) and CO-45 (contractual) are normal
+// adjudication outcomes and are NOT treated as denials.
+Clean Claim Rate = DIVIDE ( [Clean Claims], [Adjudicated Claims] )
+
+First Pass Resolution Rate =
+DIVIDE (
+    CALCULATE ( [Claim Count], FactClaim[is_first_pass_resolved] = TRUE ),
+    [Adjudicated Claims]
+)
+
+Gross Collection Rate = DIVIDE ( [Total Payments], [Gross Charges] )
+
+// Net Collection Rate measures against what was actually COLLECTIBLE:
+// charges less contractual allowances, before bad debt write-offs.
+// This is the number that says whether the revenue cycle is working.
+Net Collection Rate =
+DIVIDE ( [Total Payments], [Gross Charges] - [Contractual Adjustments] )
+
+
+// ---------------------------------------------------------------------------
+// ACCOUNTS RECEIVABLE
+// ---------------------------------------------------------------------------
+
+// Point-in-time A/R at the latest snapshot inside the current filter context.
+Total AR =
+VAR LatestSnapshot =
+    CALCULATE ( MAX ( FactARSnapshot[snapshot_date] ), ALLSELECTED ( DimDate ) )
+RETURN
+    CALCULATE (
+        SUM ( FactARSnapshot[ar_balance] ),
+        FactARSnapshot[snapshot_date] = LatestSnapshot
+    )
+
+AR Over 90 =
+VAR LatestSnapshot =
+    CALCULATE ( MAX ( FactARSnapshot[snapshot_date] ), ALLSELECTED ( DimDate ) )
+RETURN
+    CALCULATE (
+        SUM ( FactARSnapshot[ar_balance] ),
+        FactARSnapshot[snapshot_date] = LatestSnapshot,
+        FactARSnapshot[is_over_90] = TRUE
+    )
+
+% AR Over 90 = DIVIDE ( [AR Over 90], [Total AR] )
+
+// Credit balances are a reportable liability, not negative A/R to net off.
+// Showing them separately is the whole point of keeping them in the model.
+Credit Balance =
+VAR LatestSnapshot =
+    CALCULATE ( MAX ( FactARSnapshot[snapshot_date] ), ALLSELECTED ( DimDate ) )
+RETURN
+    ABS (
+        CALCULATE (
+            SUM ( FactARSnapshot[ar_balance] ),
+            FactARSnapshot[snapshot_date] = LatestSnapshot,
+            FactARSnapshot[is_credit_balance] = TRUE
+        )
+    )
+
+// Average daily charges over a trailing 91 days - the Days in A/R denominator.
+Average Daily Charges =
+VAR RefDate = MAX ( DimDate[full_date] )
+VAR TrailingCharges =
+    CALCULATE (
+        [Gross Charges],
+        DATESINPERIOD ( DimDate[full_date], RefDate, -91, DAY )
+    )
+RETURN
+    DIVIDE ( TrailingCharges, 91 )
+
+// Days in A/R - the headline revenue cycle metric.
+// MGMA better-performer benchmark is roughly 35-45 days.
+Days in AR = DIVIDE ( [Total AR], [Average Daily Charges] )
+
+Days in AR Status =
+VAR v = [Days in AR]
+RETURN
+    SWITCH (
+        TRUE (),
+        ISBLANK ( v ), "No data",
+        v <= 45, "On target",
+        v <= 60, "Watch",
+        "Action required"
+    )
+
+
+// ---------------------------------------------------------------------------
+// DENIAL MANAGEMENT
+// ---------------------------------------------------------------------------
+
+Denied Charges =
+CALCULATE ( [Gross Charges], FactClaim[is_denied] = TRUE )
+
+// Only appealable denials are genuinely recoverable cash. Reporting all
+// denied balances as "recoverable" sets a target the team cannot hit.
+Recoverable Denial Value =
+CALCULATE (
+    SUM ( FactClaim[outstanding_balance] ),
+    FactClaim[is_denied] = TRUE,
+    DimDenialReason[is_appealable] = TRUE
+)
+
+Preventable Denial Rate =
+DIVIDE (
+    CALCULATE ( [Claim Count], FactClaim[is_preventable_denial] = TRUE ),
+    [Denied Claims]
+)
+
+Underpayment Exposure = SUM ( FactClaim[underpayment_amount] )
+
+
+// ---------------------------------------------------------------------------
+// TIME INTELLIGENCE
+// ---------------------------------------------------------------------------
+
+Gross Charges PM = CALCULATE ( [Gross Charges], PREVIOUSMONTH ( DimDate[full_date] ) )
+
+Gross Charges MoM % =
+DIVIDE ( [Gross Charges] - [Gross Charges PM], [Gross Charges PM] )
+
+Gross Charges YTD =
+TOTALYTD ( [Gross Charges], DimDate[full_date], "9/30" )   // fiscal year ends 30 Sep
+
+Denial Rate PM = CALCULATE ( [Denial Rate], PREVIOUSMONTH ( DimDate[full_date] ) )
+
+Denial Rate Delta = [Denial Rate] - [Denial Rate PM]
+
+Payments Rolling 3M =
+CALCULATE (
+    [Total Payments],
+    DATESINPERIOD ( DimDate[full_date], MAX ( DimDate[full_date] ), -3, MONTH )
+)
+
+
+// ---------------------------------------------------------------------------
+// FORMATTING / UX HELPERS
+// ---------------------------------------------------------------------------
+
+// Drives conditional formatting: 1 good, 0 neutral, -1 bad.
+Denial Rate Indicator =
+SWITCH ( TRUE (), [Denial Rate] <= 0.05, 1, [Denial Rate] <= 0.10, 0, -1 )
+
+Clean Claim Rate Indicator =
+SWITCH ( TRUE (), [Clean Claim Rate] >= 0.95, 1, [Clean Claim Rate] >= 0.90, 0, -1 )
+
+// Guard text so cards read sensibly before any adjudication has happened.
+Net Collection Rate Display =
+IF (
+    [Adjudicated Claims] = 0,
+    "Awaiting adjudication",
+    FORMAT ( [Net Collection Rate], "0.0%" )
+)

@@ -1,0 +1,261 @@
+{
+  "Comment": "Healthcare RCM medallion pipeline: Bronze -> Silver -> quality gate -> Gold -> Redshift load -> Power BI refresh",
+  "StartAt": "RecordStart",
+  "States": {
+    "RecordStart": {
+      "Type": "Pass",
+      "Parameters": {
+        "business_date.$": "$.business_date",
+        "batch_id.$": "States.Format('{}-{}', $.business_date, $$.Execution.Name)",
+        "started_at.$": "$$.Execution.StartTime"
+      },
+      "ResultPath": "$.run",
+      "Next": "IngestBronze"
+    },
+
+    "IngestBronze": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "rcm-bronze-ingest",
+        "Arguments": {
+          "--LAYER": "bronze",
+          "--RCM_ENV.$": "$$.Execution.Input.env",
+          "--BATCH_ID.$": "$.run.batch_id",
+          "--CONFIG_S3": "s3://rcm-config-prod/pipeline_config.yaml"
+        }
+      },
+      "ResultPath": "$.bronze",
+      "Retry": [
+        {
+          "ErrorEquals": ["Glue.ConcurrentRunsExceededException", "Glue.InternalServiceException"],
+          "IntervalSeconds": 60,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        { "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "NotifyFailure" }
+      ],
+      "Next": "BuildSilver"
+    },
+
+    "BuildSilver": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "rcm-silver-build",
+        "Arguments": {
+          "--LAYER": "silver",
+          "--RCM_ENV.$": "$$.Execution.Input.env",
+          "--BATCH_ID.$": "$.run.batch_id",
+          "--CONFIG_S3": "s3://rcm-config-prod/pipeline_config.yaml"
+        }
+      },
+      "ResultPath": "$.silver",
+      "Retry": [
+        {
+          "ErrorEquals": ["Glue.InternalServiceException"],
+          "IntervalSeconds": 60,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        { "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "NotifyFailure" }
+      ],
+      "Next": "QualityGate"
+    },
+
+    "QualityGate": {
+      "Comment": "Reads the DQ metrics the Silver job wrote and decides whether the data is fit to publish. A pipeline with no gate here is just a fast way to publish bad numbers.",
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "rcm-quality-gate",
+        "Payload": {
+          "batch_id.$": "$.run.batch_id",
+          "max_quarantine_pct": 5.0,
+          "min_pass_rate": 0.98
+        }
+      },
+      "ResultSelector": { "verdict.$": "$.Payload.verdict", "detail.$": "$.Payload.detail" },
+      "ResultPath": "$.quality",
+      "Next": "QualityDecision"
+    },
+
+    "QualityDecision": {
+      "Type": "Choice",
+      "Choices": [
+        { "Variable": "$.quality.verdict", "StringEquals": "PASS", "Next": "BuildGold" },
+        { "Variable": "$.quality.verdict", "StringEquals": "WARN", "Next": "NotifyQualityWarning" }
+      ],
+      "Default": "QualityGateFailed"
+    },
+
+    "NotifyQualityWarning": {
+      "Comment": "Degraded but publishable: warn the stewards and continue.",
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "arn:aws:sns:us-east-1:000000000000:rcm-data-quality",
+        "Subject": "RCM pipeline: data quality warning",
+        "Message.$": "$.quality.detail"
+      },
+      "ResultPath": null,
+      "Next": "BuildGold"
+    },
+
+    "QualityGateFailed": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "arn:aws:sns:us-east-1:000000000000:rcm-alerts",
+        "Subject": "RCM pipeline HALTED: quality gate failed",
+        "Message.$": "$.quality.detail"
+      },
+      "ResultPath": null,
+      "Next": "PipelineFailed"
+    },
+
+    "BuildGold": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "rcm-gold-build",
+        "Arguments": {
+          "--LAYER": "gold",
+          "--RCM_ENV.$": "$$.Execution.Input.env",
+          "--BATCH_ID.$": "$.run.batch_id",
+          "--CONFIG_S3": "s3://rcm-config-prod/pipeline_config.yaml"
+        }
+      },
+      "ResultPath": "$.gold",
+      "Catch": [
+        { "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "NotifyFailure" }
+      ],
+      "Next": "ParallelPublish"
+    },
+
+    "ParallelPublish": {
+      "Comment": "Catalog crawl and warehouse load are independent; run them together.",
+      "Type": "Parallel",
+      "ResultPath": "$.publish",
+      "Branches": [
+        {
+          "StartAt": "CrawlGoldCatalog",
+          "States": {
+            "CrawlGoldCatalog": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::aws-sdk:glue:startCrawler",
+              "Parameters": { "Name": "rcm-gold-crawler" },
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "LoadRedshift",
+          "States": {
+            "LoadRedshift": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::aws-sdk:redshiftdata:batchExecuteStatement",
+              "Parameters": {
+                "WorkgroupName": "rcm-wg-prod",
+                "Database": "rcm_dw",
+                "Sqls": [
+                  "CALL gold.sp_load_dimensions()",
+                  "CALL gold.sp_load_facts()",
+                  "CALL marts.sp_rebuild_kpis()"
+                ]
+              },
+              "Retry": [
+                {
+                  "ErrorEquals": ["Redshift.ActiveStatementsExceededException"],
+                  "IntervalSeconds": 30,
+                  "MaxAttempts": 5,
+                  "BackoffRate": 2.0
+                }
+              ],
+              "Next": "WaitForRedshift"
+            },
+            "WaitForRedshift": {
+              "Type": "Wait",
+              "Seconds": 30,
+              "Next": "CheckRedshiftStatus"
+            },
+            "CheckRedshiftStatus": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::aws-sdk:redshiftdata:describeStatement",
+              "Parameters": { "Id.$": "$.Id" },
+              "Next": "RedshiftDone"
+            },
+            "RedshiftDone": {
+              "Type": "Choice",
+              "Choices": [
+                { "Variable": "$.Status", "StringEquals": "FINISHED", "Next": "RedshiftSuccess" },
+                { "Variable": "$.Status", "StringEquals": "FAILED", "Next": "RedshiftFailed" }
+              ],
+              "Default": "WaitForRedshift"
+            },
+            "RedshiftSuccess": { "Type": "Succeed" },
+            "RedshiftFailed": { "Type": "Fail", "Error": "RedshiftLoadFailed" }
+          }
+        }
+      ],
+      "Catch": [
+        { "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "NotifyFailure" }
+      ],
+      "Next": "RefreshPowerBI"
+    },
+
+    "RefreshPowerBI": {
+      "Comment": "Refresh on pipeline completion, not on a clock, so the report never shows a half-loaded warehouse.",
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "rcm-powerbi-refresh",
+        "Payload": { "dataset": "healthcare-rcm", "batch_id.$": "$.run.batch_id" }
+      },
+      "ResultPath": "$.powerbi",
+      "Retry": [
+        { "ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 120, "MaxAttempts": 2 }
+      ],
+      "Catch": [
+        {
+          "Comment": "A failed report refresh must not fail the data pipeline - the warehouse is already correct.",
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.powerbi_error",
+          "Next": "NotifyRefreshWarning"
+        }
+      ],
+      "Next": "PipelineSucceeded"
+    },
+
+    "NotifyRefreshWarning": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "arn:aws:sns:us-east-1:000000000000:rcm-alerts",
+        "Subject": "RCM: warehouse loaded but Power BI refresh failed",
+        "Message.$": "States.JsonToString($.powerbi_error)"
+      },
+      "ResultPath": null,
+      "Next": "PipelineSucceeded"
+    },
+
+    "NotifyFailure": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "arn:aws:sns:us-east-1:000000000000:rcm-alerts",
+        "Subject": "RCM pipeline FAILED",
+        "Message.$": "States.JsonToString($.error)"
+      },
+      "ResultPath": null,
+      "Next": "PipelineFailed"
+    },
+
+    "PipelineSucceeded": { "Type": "Succeed" },
+    "PipelineFailed": { "Type": "Fail", "Error": "RcmPipelineFailed" }
+  }
+}

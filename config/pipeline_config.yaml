@@ -1,0 +1,176 @@
+# ---------------------------------------------------------------------------
+# Healthcare RCM Platform - pipeline configuration
+#
+# The same job code runs locally and on AWS. Only this file changes.
+# Select an environment with:  export RCM_ENV=local|dev|prod
+# ---------------------------------------------------------------------------
+
+default_env: local
+
+layers:
+  landing: landing
+  bronze: bronze
+  silver: silver
+  gold: gold
+  quarantine: quarantine
+  metrics: metrics
+
+environments:
+
+  local:
+    storage_root: "data"
+    spark_master: "local[*]"     # override with RCM_SPARK_MASTER on a bigger box
+    driver_memory: "1600m"
+    spark_log_level: "ERROR"
+    warehouse:
+      type: duckdb            # stand-in for Redshift when running offline
+      database: "data/warehouse/rcm.duckdb"
+
+  dev:
+    storage_root: "s3a://rcm-datalake-dev-us-east-1"
+    shuffle_partitions: 64
+    spark_log_level: "WARN"
+    glue_database: "rcm_dev"
+    warehouse:
+      type: redshift
+      workgroup: "rcm-wg-dev"
+      database: "rcm_dw"
+      iam_role_arn: "arn:aws:iam::000000000000:role/RcmRedshiftCopyRole"
+      schema_gold: "gold"
+
+  prod:
+    storage_root: "s3a://rcm-datalake-prod-us-east-1"
+    shuffle_partitions: 400
+    spark_log_level: "WARN"
+    glue_database: "rcm_prod"
+    warehouse:
+      type: redshift
+      workgroup: "rcm-wg-prod"
+      database: "rcm_dw"
+      iam_role_arn: "arn:aws:iam::000000000000:role/RcmRedshiftCopyRole"
+      schema_gold: "gold"
+
+# ---------------------------------------------------------------------------
+# Source registry - drives the config-driven Bronze ingestion loop.
+# Adding a new source file is a YAML edit, not a code change.
+# ---------------------------------------------------------------------------
+sources:
+
+  - name: patients_hospital_a
+    system: EMR_HOSP_A
+    landing_path: "emr/hospital_a/patients.csv"
+    format: csv
+    load_type: full_snapshot
+    bronze_table: patients_hospital_a
+
+  - name: patients_hospital_a_delta
+    system: EMR_HOSP_A
+    landing_path: "emr/hospital_a/patients_delta.csv"
+    format: csv
+    load_type: incremental
+    bronze_table: patients_hospital_a_delta
+
+  - name: patients_hospital_b
+    system: EMR_HOSP_B
+    landing_path: "emr/hospital_b/patients.csv"
+    format: csv
+    load_type: full_snapshot
+    bronze_table: patients_hospital_b
+
+  - name: encounters_hospital_a
+    system: EMR_HOSP_A
+    landing_path: "emr/hospital_a/encounters.csv"
+    format: csv
+    load_type: full_snapshot
+    bronze_table: encounters_hospital_a
+
+  - name: encounters_hospital_b
+    system: EMR_HOSP_B
+    landing_path: "emr/hospital_b/encounters.csv"
+    format: csv
+    load_type: full_snapshot
+    bronze_table: encounters_hospital_b
+
+  - name: claims
+    system: BILLING
+    landing_path: "billing/claims.csv"
+    format: csv
+    load_type: full_snapshot
+    bronze_table: claims
+
+  - name: claim_lines
+    system: BILLING
+    landing_path: "billing/claim_lines.csv"
+    format: csv
+    load_type: full_snapshot
+    bronze_table: claim_lines
+
+  - name: transactions
+    system: BILLING
+    landing_path: "billing/transactions.csv"
+    format: csv
+    load_type: full_snapshot
+    bronze_table: transactions
+
+  - name: era_835
+    system: PAYER_REMITTANCE
+    landing_path: "remittance/era_835.csv"
+    format: csv
+    load_type: full_snapshot
+    bronze_table: era_835
+
+  - name: cpt_codes
+    system: REFERENCE
+    landing_path: "reference/cpt_codes.csv"
+    format: csv
+    load_type: reference
+    bronze_table: cpt_codes
+
+  - name: icd10_codes
+    system: REFERENCE
+    landing_path: "reference/icd10_codes.csv"
+    format: csv
+    load_type: reference
+    bronze_table: icd10_codes
+
+  - name: payers
+    system: REFERENCE
+    landing_path: "reference/payers.csv"
+    format: csv
+    load_type: reference
+    bronze_table: payers
+
+  - name: carc_codes
+    system: REFERENCE
+    landing_path: "reference/carc_codes.csv"
+    format: csv
+    load_type: reference
+    bronze_table: carc_codes
+
+  - name: npi_providers
+    system: REFERENCE
+    landing_path: "reference/npi_providers.csv"
+    format: csv
+    load_type: reference
+    bronze_table: npi_providers
+
+  - name: departments
+    system: REFERENCE
+    landing_path: "reference/departments.csv"
+    format: csv
+    load_type: reference
+    bronze_table: departments
+
+# ---------------------------------------------------------------------------
+# Business rules - the numbers the finance team argues about live HERE,
+# in one auditable place, not scattered through SQL.
+# ---------------------------------------------------------------------------
+business_rules:
+  as_of_date: "2025-12-31"
+  ar_aging_buckets: [0, 30, 60, 90, 120, 180]
+  days_in_ar_lookback_days: 90
+  timely_filing_days: 90
+  clean_claim_definition: "paid on first submission with no denial CARC"
+  small_balance_writeoff_threshold: 15.00
+  denial_categories_appealable: ["Technical", "Medical Necessity", "Authorization",
+                                 "Coordination of Benefits", "Duplicate"]

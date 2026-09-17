@@ -1,0 +1,25 @@
+[tool.ruff]
+line-length = 95
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
+ignore = [
+    "E501",  # line length is handled by the formatter
+    "N803",  # PySpark convention allows non-snake-case DataFrame args
+    "N806",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]          # asserts are the point of a test
+
+[tool.black]
+line-length = 95
+target-version = ["py311"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning:pyspark.*",
+    "ignore::FutureWarning:pyspark.*",
+]

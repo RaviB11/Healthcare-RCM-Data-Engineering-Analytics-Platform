@@ -1,0 +1,48 @@
+# Generated data - regenerate with `make pipeline`
+data/
+powerbi/data/
+*.duckdb
+
+# ...but the small KPI marts ARE committed, so the repo shows real output
+# without requiring a Spark run. The large fact extracts stay out.
+!powerbi/sample_output/
+
+# Power BI binaries do not diff and would bundle a copy of the data
+*.pbix
+*.pbit
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Spark
+spark-warehouse/
+metastore_db/
+derby.log
+*.crc
+_SUCCESS
+
+# Terraform - state can contain resource identifiers and secrets
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!envs/*.tfvars.example
+.terraform.lock.hcl
+
+# Credentials - never commit these
+.env
+*.pem
+credentials.json
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
