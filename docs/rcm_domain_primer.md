@@ -80,6 +80,22 @@ too makes a hospital that writes off aggressively look excellent.
 **Rate denominators must exclude claims still in flight.** The current month is
 always mid-adjudication.
 
+### Denial rate interpretation and caveats
+
+The denial rate in this project is calculated only on adjudicated claims so that
+claims still moving through the adjudication process do not distort the metric.
+
+- **Numerator:** adjudicated claims flagged as denied.
+- **Denominator:** all adjudicated claims.
+- **Denial classification:** patient-responsibility codes such as `PR-*` and
+  contractual write-downs such as `CO-45` represent normal adjudication and do
+  not count as denials.
+- **Time-window caveat:** current-period rates can be misleading while a large
+  share of submitted claims is still awaiting adjudication.
+- **Operational use:** denial management is prioritized by recoverable value
+  rather than raw denial count, so the analysis focuses attention on denials
+  that can actually be acted on.
+
 ## Why denials get their own dimension
 
 Denials are where the recoverable money is, and they are not homogeneous:
