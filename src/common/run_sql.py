@@ -80,8 +80,9 @@ def split_statements(sql_text: str) -> list[tuple[str, str]]:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Run analytics SQL against Gold Parquet")
     ap.add_argument("--file", default=None, help="single file in sql/analytics/")
-    ap.add_argument("--check", action="store_true",
-                    help="exit non-zero if any statement fails")
+    ap.add_argument(
+        "--check", action="store_true", help="exit non-zero if any statement fails"
+    )
     ap.add_argument("--rows", type=int, default=10, help="rows to display")
     args = ap.parse_args(argv)
 
@@ -89,8 +90,7 @@ def main(argv: list[str] | None = None) -> int:
     con = duckdb.connect()
     register_gold(con, cfg)
 
-    files = ([ANALYTICS_DIR / args.file] if args.file
-             else sorted(ANALYTICS_DIR.glob("*.sql")))
+    files = [ANALYTICS_DIR / args.file] if args.file else sorted(ANALYTICS_DIR.glob("*.sql"))
 
     failures = 0
     for sql_file in files:
@@ -101,7 +101,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"\n--- {label}  ({len(result)} rows) ---")
                 with_pd_opts = result.head(args.rows).to_string(index=False)
                 print(with_pd_opts)
-            except Exception as exc:                        # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001
                 failures += 1
                 print(f"\n--- {label} :: FAILED ---\n{exc}")
 
