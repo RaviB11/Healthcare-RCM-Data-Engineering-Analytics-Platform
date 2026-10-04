@@ -8,6 +8,7 @@ ignore = [
     "E501",  # line length is handled by the formatter
     "N803",  # PySpark convention allows non-snake-case DataFrame args
     "N806",
+    "N812",  # PySpark convention uses functions as F
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -19,6 +20,7 @@ target-version = ["py311"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 filterwarnings = [
     "ignore::DeprecationWarning:pyspark.*",
     "ignore::FutureWarning:pyspark.*",

@@ -9,6 +9,14 @@ manages against — Days in A/R, denial rate, clean claim rate, net collection r
 **Stack:** Python · PySpark · SQL · AWS (S3, Glue, Step Functions, Redshift,
 Lambda) · Terraform · Airflow · Power BI
 
+**Engineering workflow:** Git/GitHub · feature branches · pull requests · GitHub
+Actions CI · automated tests · Ruff/Black code quality · Terraform validation
+
+Changes are developed on feature branches and proposed through pull requests.
+GitHub Actions validates Python linting and formatting, unit tests, a reduced-scale
+end-to-end pipeline run, analytics SQL execution, Terraform formatting/validation,
+and the Step Functions definition before changes are merged.
+
 The whole pipeline runs locally with no AWS account:
 
 ```bash
@@ -87,6 +95,7 @@ Verified end to end on the committed configuration:
 | `fact_ar_snapshot` | 60,927 claim-month rows, 24 months |
 | Tests | 37 passing |
 | Analytics SQL | 8 queries executed against the Gold layer |
+| CI | GitHub Actions: Ruff, Black, pytest, reduced-scale pipeline, analytics SQL, Terraform validation |
 
 Sample output is committed under `powerbi/sample_output/` so the results are
 readable without running anything.
@@ -147,6 +156,12 @@ flag and a `Credit` ageing bucket.
 happens once, in `config/pipeline_config.yaml` and the comments in
 `build_gold.py`, and every consumer inherits it.
 
+Analytics semantics are treated as part of the data model, not as dashboard
+decoration. Metric definitions, denominators, exclusions, caveats and known
+interpretation risks are documented alongside the implementation so an analyst
+or business partner can understand what a number means before acting on it.
+This reduces the risk of technically valid but contextually wrong analysis.
+
 Two definitional choices that materially change the reported numbers:
 
 - **PR-1, PR-2 and CO-45 are not denials.** Deductible, coinsurance and
@@ -179,6 +194,26 @@ The same job code runs local, dev and prod. `RCM_ENV` selects a config block;
 nothing in `src/` knows which environment it is in. Adding a source file is a
 YAML edit, not a code change.
 
+### Pull-request and CI workflow
+
+Repository changes use a Git/GitHub feature-branch workflow rather than direct
+edits to `main`. Pull requests provide a reviewable diff and trigger GitHub
+Actions so code quality, tests, pipeline behaviour, analytics SQL and
+infrastructure definitions are checked together.
+
+The CI workflow currently verifies:
+
+- `ruff check` and `black --check` for Python quality and formatting
+- `pytest` with coverage for transformation, data-quality and SCD2 behaviour
+- a reduced-scale synthetic-data run through Bronze → Silver → Gold
+- execution of the analytics SQL against the generated Gold layer
+- `terraform fmt -check`, `terraform init -backend=false` and `terraform validate`
+- JSON validation of the Step Functions state-machine definition
+
+A CI-baseline cleanup also exposed missing Terraform IAM role definitions for
+Glue and Step Functions; those roles are now explicitly modeled and validated
+rather than bypassing the infrastructure check.
+
 ---
 
 ## Repository layout
@@ -198,11 +233,13 @@ YAML edit, not a code change.
 │   ├── ddl/                     Redshift schemas, dimensions, facts
 │   ├── etl/                     COPY-and-swap load, mart rebuild
 │   └── analytics/               8 RCM business queries
+├── .github/workflows/
+│   └── ci.yml                   lint, tests, pipeline smoke run, SQL + Terraform checks
 ├── aws/
 │   ├── glue/                    job entrypoint
 │   ├── lambda/                  S3 arrival trigger
 │   ├── stepfunctions/           pipeline state machine
-│   └── terraform/               S3, KMS, Glue, Step Functions, DynamoDB
+│   └── terraform/               S3, KMS, IAM, Glue, Step Functions, DynamoDB
 ├── airflow/dags/                MWAA alternative to Step Functions
 ├── powerbi/                     DAX measures, model + report spec
 │   └── sample_output/           committed KPI marts - real output, no run needed
@@ -238,7 +275,9 @@ then set `storage_root` in the config to the `storage_root` Terraform output.
   the only responsible way to put a healthcare project on GitHub.
 - The `.pbix` is not committed. Binaries don't diff and would bundle a copy of
   the data; `powerbi/README.md` and `measures.dax` are enough to rebuild it.
-- Terraform is written and validated but not applied against a live account, so
-  the ARNs are placeholders.
+- Terraform is formatted and locally validated, including the Glue and Step
+  Functions IAM roles, but it has not been applied against a live AWS account.
+  Deployment-specific ARNs and external service resources therefore remain
+  environment-dependent.
 - The generator's denial and payment behaviour is a plausible simulation, not a
   calibrated model of any real payer mix.

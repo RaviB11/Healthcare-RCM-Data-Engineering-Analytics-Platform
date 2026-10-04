@@ -23,9 +23,17 @@ import sys
 
 from pyspark.sql import functions as F
 
-from src.common.utils import (get_logger, get_spark, layer_path, load_config,
-                              new_batch_id, read_csv, standardize_columns,
-                              with_audit_columns, write_parquet)
+from src.common.utils import (
+    get_logger,
+    get_spark,
+    layer_path,
+    load_config,
+    new_batch_id,
+    read_csv,
+    standardize_columns,
+    with_audit_columns,
+    write_parquet,
+)
 
 LOG = get_logger("bronze.ingest")
 
@@ -47,8 +55,13 @@ def ingest_source(spark, source: dict, cfg: dict, batch_id: str) -> dict:
     mode = "append" if source["load_type"] == "incremental" else "overwrite"
     rows = write_parquet(df, tgt_path, mode=mode, coalesce=1)
 
-    return {"source": name, "table": source["bronze_table"], "rows": rows,
-            "load_type": source["load_type"], "status": "SUCCESS"}
+    return {
+        "source": name,
+        "table": source["bronze_table"],
+        "rows": rows,
+        "load_type": source["load_type"],
+        "status": "SUCCESS",
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -76,26 +89,35 @@ def main(argv: list[str] | None = None) -> int:
     for source in sources:
         try:
             results.append(ingest_source(spark, source, cfg, batch_id))
-        except Exception as exc:                       # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             LOG.error("FAILED %s: %s", source["name"], exc)
             failures.append({"source": source["name"], "status": "FAILED", "error": str(exc)})
 
     total = sum(r["rows"] for r in results)
     LOG.info("-" * 78)
-    LOG.info("Bronze complete: %d/%d sources, %s rows ingested",
-             len(results), len(sources), f"{total:,}")
+    LOG.info(
+        "Bronze complete: %d/%d sources, %s rows ingested",
+        len(results),
+        len(sources),
+        f"{total:,}",
+    )
     for f in failures:
         LOG.error("  failed: %s -> %s", f["source"], f["error"])
 
     # Persist a manifest so Airflow / Step Functions can assert on it.
     manifest = spark.createDataFrame(
-        [(batch_id, r["source"], r["table"], r["rows"], r["load_type"], r["status"])
-         for r in results],
+        [
+            (batch_id, r["source"], r["table"], r["rows"], r["load_type"], r["status"])
+            for r in results
+        ],
         "batch_id string, source string, table_name string, row_count bigint, "
         "load_type string, status string",
     ).withColumn("completed_at", F.current_timestamp())
-    write_parquet(manifest, layer_path("metrics", f"bronze_manifest/batch_id={batch_id}", cfg),
-                  coalesce=1)
+    write_parquet(
+        manifest,
+        layer_path("metrics", f"bronze_manifest/batch_id={batch_id}", cfg),
+        coalesce=1,
+    )
 
     spark.stop()
     return 1 if failures else 0

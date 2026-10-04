@@ -1,4 +1,5 @@
 """Tests for the declarative data-quality engine."""
+
 from __future__ import annotations
 
 import textwrap
@@ -119,8 +120,9 @@ def test_referential_rule(spark, tmp_path):
     path.write_text(rules, encoding="utf-8")
     eng = DataQualityEngine(spark, rules_path=path)
 
-    claims = spark.createDataFrame([("C1", "PAY1"), ("C2", "PAY999")],
-                                   "claim_id string, payer_id string")
+    claims = spark.createDataFrame(
+        [("C1", "PAY1"), ("C2", "PAY999")], "claim_id string, payer_id string"
+    )
     payers = spark.createDataFrame([("PAY1",)], "payer_id string")
 
     clean, quarantine, _ = eng.validate(claims, "claims", refs={"payers": payers})

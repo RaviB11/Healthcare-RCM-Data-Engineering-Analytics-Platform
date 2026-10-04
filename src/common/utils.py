@@ -17,7 +17,7 @@ import logging
 import os
 import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -34,14 +34,17 @@ DEFAULT_CONFIG = PROJECT_ROOT / "config" / "pipeline_config.yaml"
 # Logging
 # --------------------------------------------------------------------------
 
+
 def get_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(logging.Formatter(
-            "%(asctime)s | %(levelname)-7s | %(name)-28s | %(message)s",
-            datefmt="%H:%M:%S",
-        ))
+        handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s | %(levelname)-7s | %(name)-28s | %(message)s",
+                datefmt="%H:%M:%S",
+            )
+        )
         logger.addHandler(handler)
         logger.setLevel(os.environ.get("RCM_LOG_LEVEL", "INFO"))
         logger.propagate = False
@@ -54,6 +57,7 @@ LOG = get_logger(__name__)
 # --------------------------------------------------------------------------
 # Config
 # --------------------------------------------------------------------------
+
 
 @lru_cache(maxsize=1)
 def load_config(path: str | None = None) -> dict[str, Any]:
@@ -82,6 +86,7 @@ def layer_path(layer: str, dataset: str = "", cfg: dict | None = None) -> str:
 # Spark
 # --------------------------------------------------------------------------
 
+
 def get_spark(app_name: str, cfg: dict | None = None) -> SparkSession:
     cfg = cfg or load_config()
     builder = (
@@ -94,15 +99,19 @@ def get_spark(app_name: str, cfg: dict | None = None) -> SparkSession:
     )
 
     if cfg["env"] == "local":
-        builder = (builder.master(cfg.get("spark_master", "local[*]"))
-                   .config("spark.driver.memory", cfg.get("driver_memory", "4g"))
-                   .config("spark.sql.shuffle.partitions", "8")
-                   .config("spark.ui.showConsoleProgress", "false"))
+        builder = (
+            builder.master(cfg.get("spark_master", "local[*]"))
+            .config("spark.driver.memory", cfg.get("driver_memory", "4g"))
+            .config("spark.sql.shuffle.partitions", "8")
+            .config("spark.ui.showConsoleProgress", "false")
+        )
     else:
-        builder = (builder
-                   .config("spark.sql.shuffle.partitions", cfg.get("shuffle_partitions", 200))
-                   .config("spark.hadoop.fs.s3a.aws.credentials.provider",
-                           "com.amazonaws.auth.DefaultAWSCredentialsProviderChain"))
+        builder = builder.config(
+            "spark.sql.shuffle.partitions", cfg.get("shuffle_partitions", 200)
+        ).config(
+            "spark.hadoop.fs.s3a.aws.credentials.provider",
+            "com.amazonaws.auth.DefaultAWSCredentialsProviderChain",
+        )
 
     spark = builder.getOrCreate()
     spark.sparkContext.setLogLevel(cfg.get("spark_log_level", "WARN"))
@@ -113,8 +122,11 @@ def get_spark(app_name: str, cfg: dict | None = None) -> SparkSession:
 # Read / write helpers
 # --------------------------------------------------------------------------
 
+
 def read_csv(spark: SparkSession, path: str, schema=None, header: bool = True) -> DataFrame:
-    reader = spark.read.option("header", header).option("escape", '"').option("multiLine", "false")
+    reader = (
+        spark.read.option("header", header).option("escape", '"').option("multiLine", "false")
+    )
     if schema is not None:
         return reader.schema(schema).csv(path)
     return reader.option("inferSchema", "false").csv(path)
@@ -124,9 +136,13 @@ def read_parquet(spark: SparkSession, path: str) -> DataFrame:
     return spark.read.parquet(path)
 
 
-def write_parquet(df: DataFrame, path: str, mode: str = "overwrite",
-                  partition_by: list[str] | None = None,
-                  coalesce: int | None = None) -> int:
+def write_parquet(
+    df: DataFrame,
+    path: str,
+    mode: str = "overwrite",
+    partition_by: list[str] | None = None,
+    coalesce: int | None = None,
+) -> int:
     """Write Parquet and return the row count that was persisted."""
     out = df.coalesce(coalesce) if coalesce else df
     writer = out.write.mode(mode).option("compression", "snappy")
@@ -134,8 +150,12 @@ def write_parquet(df: DataFrame, path: str, mode: str = "overwrite",
         writer = writer.partitionBy(*partition_by)
     writer.parquet(path)
     count = df.count()
-    LOG.info("wrote %s rows -> %s%s", f"{count:,}", path,
-             f" (partitioned by {partition_by})" if partition_by else "")
+    LOG.info(
+        "wrote %s rows -> %s%s",
+        f"{count:,}",
+        path,
+        f" (partitioned by {partition_by})" if partition_by else "",
+    )
     return count
 
 
@@ -152,12 +172,12 @@ def path_exists(spark: SparkSession, path: str) -> bool:
 # Audit columns
 # --------------------------------------------------------------------------
 
+
 class GrainViolationError(Exception):
     """Raised when a fact table has more rows per key than its declared grain."""
 
 
-def assert_unique_grain(df: DataFrame, keys: list[str], table: str,
-                        sample: int = 5) -> None:
+def assert_unique_grain(df: DataFrame, keys: list[str], table: str, sample: int = 5) -> None:
     """
     Fail loudly if a join fanned out a fact table.
 
@@ -170,29 +190,36 @@ def assert_unique_grain(df: DataFrame, keys: list[str], table: str,
     if n:
         examples = [r.asDict() for r in dupes.limit(sample).collect()]
         raise GrainViolationError(
-            f"{table}: {n:,} duplicate keys on {keys}. Examples: {examples}")
+            f"{table}: {n:,} duplicate keys on {keys}. Examples: {examples}"
+        )
     LOG.info("grain OK: %s is unique on %s", table, keys)
 
 
 def new_batch_id() -> str:
-    return f"{datetime.now(timezone.utc):%Y%m%dT%H%M%S}-{uuid.uuid4().hex[:8]}"
+    return f"{datetime.now(UTC):%Y%m%dT%H%M%S}-{uuid.uuid4().hex[:8]}"
 
 
-def with_audit_columns(df: DataFrame, source_system: str, batch_id: str,
-                       layer: str) -> DataFrame:
+def with_audit_columns(
+    df: DataFrame, source_system: str, batch_id: str, layer: str
+) -> DataFrame:
     """Every persisted table carries provenance. Non-negotiable in healthcare."""
-    return (df
-            .withColumn("_source_system", F.lit(source_system))
-            .withColumn("_source_file", F.input_file_name() if layer == "bronze"
-                        else F.lit(None).cast("string"))
-            .withColumn("_batch_id", F.lit(batch_id))
-            .withColumn("_ingested_at", F.current_timestamp())
-            .withColumn("_layer", F.lit(layer)))
+    return (
+        df.withColumn("_source_system", F.lit(source_system))
+        .withColumn(
+            "_source_file",
+            F.input_file_name() if layer == "bronze" else F.lit(None).cast("string"),
+        )
+        .withColumn("_batch_id", F.lit(batch_id))
+        .withColumn("_ingested_at", F.current_timestamp())
+        .withColumn("_layer", F.lit(layer))
+    )
 
 
 def surrogate_key(*cols: str):
     """Deterministic 64-bit surrogate key from the natural key columns."""
-    concat = F.concat_ws("||", *[F.coalesce(F.col(c).cast("string"), F.lit("~")) for c in cols])
+    concat = F.concat_ws(
+        "||", *[F.coalesce(F.col(c).cast("string"), F.lit("~")) for c in cols]
+    )
     return F.abs(F.xxhash64(concat))
 
 
@@ -207,9 +234,10 @@ def to_snake_case(name: str) -> str:
         already_snake    -> already_snake
     """
     import re
+
     s = name.strip()
-    s = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", s)   # HTTPServer -> HTTP_Server
-    s = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", s)      # patientId  -> patient_Id
+    s = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", s)  # HTTPServer -> HTTP_Server
+    s = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", s)  # patientId  -> patient_Id
     s = re.sub(r"[^0-9A-Za-z_]+", "_", s)
     return re.sub(r"_+", "_", s).strip("_").lower()
 

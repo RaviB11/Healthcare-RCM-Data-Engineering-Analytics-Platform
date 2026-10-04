@@ -41,15 +41,17 @@ def record_hash(tracked_cols: list[str]) -> Column:
     return F.sha2(F.concat_ws("||", *parts), 256)
 
 
-def _stamp(df: DataFrame, business_key: str, tracked_cols: list[str],
-           effective_col: str) -> DataFrame:
-    return (df
-            .withColumn("record_hash", record_hash(tracked_cols))
-            .withColumn("effective_from", F.col(effective_col).cast("timestamp")))
+def _stamp(
+    df: DataFrame, business_key: str, tracked_cols: list[str], effective_col: str
+) -> DataFrame:
+    return df.withColumn("record_hash", record_hash(tracked_cols)).withColumn(
+        "effective_from", F.col(effective_col).cast("timestamp")
+    )
 
 
-def initial_load(source: DataFrame, business_key: str, tracked_cols: list[str],
-                 effective_col: str) -> DataFrame:
+def initial_load(
+    source: DataFrame, business_key: str, tracked_cols: list[str], effective_col: str
+) -> DataFrame:
     """
     Build a dimension from scratch. The source may already contain multiple
     versions of the same key (e.g. a base extract plus a delta file), so we
@@ -60,10 +62,11 @@ def initial_load(source: DataFrame, business_key: str, tracked_cols: list[str],
     w = Window.partitionBy(business_key).orderBy("effective_from")
 
     # Drop consecutive rows whose tracked attributes did not actually change.
-    deduped = (stamped
-               .withColumn("_prev_hash", F.lag("record_hash").over(w))
-               .filter(F.col("_prev_hash").isNull() | (F.col("_prev_hash") != F.col("record_hash")))
-               .drop("_prev_hash"))
+    deduped = (
+        stamped.withColumn("_prev_hash", F.lag("record_hash").over(w))
+        .filter(F.col("_prev_hash").isNull() | (F.col("_prev_hash") != F.col("record_hash")))
+        .drop("_prev_hash")
+    )
 
     return _close_out(deduped, business_key)
 
@@ -71,18 +74,27 @@ def initial_load(source: DataFrame, business_key: str, tracked_cols: list[str],
 def _close_out(df: DataFrame, business_key: str) -> DataFrame:
     """Assign effective_to / is_current / version_number over an ordered history."""
     w = Window.partitionBy(business_key).orderBy("effective_from")
-    return (df
-            .withColumn("_next_from", F.lead("effective_from").over(w))
-            .withColumn("effective_to",
-                        F.when(F.col("_next_from").isNull(), F.lit(HIGH_DATE).cast("timestamp"))
-                         .otherwise(F.col("_next_from") - F.expr("INTERVAL 1 SECOND")))
-            .withColumn("is_current", F.col("_next_from").isNull())
-            .withColumn("version_number", F.row_number().over(w))
-            .drop("_next_from"))
+    return (
+        df.withColumn("_next_from", F.lead("effective_from").over(w))
+        .withColumn(
+            "effective_to",
+            F.when(F.col("_next_from").isNull(), F.lit(HIGH_DATE).cast("timestamp")).otherwise(
+                F.col("_next_from") - F.expr("INTERVAL 1 SECOND")
+            ),
+        )
+        .withColumn("is_current", F.col("_next_from").isNull())
+        .withColumn("version_number", F.row_number().over(w))
+        .drop("_next_from")
+    )
 
 
-def apply_scd2(target: DataFrame | None, source: DataFrame, business_key: str,
-               tracked_cols: list[str], effective_col: str) -> DataFrame:
+def apply_scd2(
+    target: DataFrame | None,
+    source: DataFrame,
+    business_key: str,
+    tracked_cols: list[str],
+    effective_col: str,
+) -> DataFrame:
     """
     Merge `source` into an existing SCD2 `target` and return the full new
     dimension (all versions, correctly closed out).
@@ -109,17 +121,21 @@ def apply_scd2(target: DataFrame | None, source: DataFrame, business_key: str,
 
     joined = src.join(current_slim, src[business_key] == F.col("_k"), "left")
 
-    changed_or_new = (joined
-                      .filter(F.col("_cur_hash").isNull()
-                              | ((F.col("_cur_hash") != F.col("record_hash"))
-                                 & (F.col("effective_from") > F.col("_cur_from"))))
-                      .drop("_k", "_cur_hash", "_cur_from"))
+    changed_or_new = joined.filter(
+        F.col("_cur_hash").isNull()
+        | (
+            (F.col("_cur_hash") != F.col("record_hash"))
+            & (F.col("effective_from") > F.col("_cur_from"))
+        )
+    ).drop("_k", "_cur_hash", "_cur_from")
 
     # Everything we already hold, plus the new versions, re-closed as one history.
-    history_cols = [c for c in target.columns
-                    if c not in ("effective_to", "is_current", "version_number")]
-    combined = (target.select(*history_cols)
-                .unionByName(changed_or_new.select(*history_cols), allowMissingColumns=True))
+    history_cols = [
+        c for c in target.columns if c not in ("effective_to", "is_current", "version_number")
+    ]
+    combined = target.select(*history_cols).unionByName(
+        changed_or_new.select(*history_cols), allowMissingColumns=True
+    )
 
     return _close_out(combined, business_key)
 

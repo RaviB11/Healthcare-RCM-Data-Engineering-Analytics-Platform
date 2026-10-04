@@ -28,7 +28,7 @@ provider "aws" {
       Project     = "healthcare-rcm"
       Environment = var.environment
       ManagedBy   = "terraform"
-      DataClass   = "PHI"        # drives access review and retention policy
+      DataClass   = "PHI" # drives access review and retention policy
     }
   }
 }
@@ -73,7 +73,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "lake" {
       kms_master_key_id = aws_kms_key.lake.arn
       sse_algorithm     = "aws:kms"
     }
-    bucket_key_enabled = true    # cuts KMS request cost on high-object-count prefixes
+    bucket_key_enabled = true # cuts KMS request cost on high-object-count prefixes
   }
 }
 
@@ -187,7 +187,7 @@ resource "aws_glue_job" "layer" {
     # Glue's own bookmarks are disabled: this pipeline manages incrementality
     # through partition overwrite and batch ids, and having two mechanisms
     # disagree about what has been processed is a bad place to be.
-    "--job-bookmark-option"              = "job-bookmark-disable"
+    "--job-bookmark-option" = "job-bookmark-disable"
   }
 
   execution_property {

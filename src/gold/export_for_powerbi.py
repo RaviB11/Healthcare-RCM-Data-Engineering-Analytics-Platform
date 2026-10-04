@@ -22,8 +22,7 @@ from pathlib import Path
 
 from pyspark.sql import functions as F
 
-from src.common.utils import (get_logger, get_spark, layer_path, load_config,
-                              read_parquet)
+from src.common.utils import get_logger, get_spark, layer_path, load_config, read_parquet
 
 LOG = get_logger("gold.powerbi_export")
 
@@ -31,16 +30,32 @@ LOG = get_logger("gold.powerbi_export")
 EXPORTS: dict[str, list[str] | None] = {
     "dim_date": None,
     "dim_payer": None,
-    "dim_provider": ["provider_sk", "provider_id", "provider_name", "credential",
-                     "specialty", "department_name", "service_line", "hospital",
-                     "is_active"],
+    "dim_provider": [
+        "provider_sk",
+        "provider_id",
+        "provider_name",
+        "credential",
+        "specialty",
+        "department_name",
+        "service_line",
+        "hospital",
+        "is_active",
+    ],
     "dim_procedure": None,
     "dim_diagnosis": None,
     "dim_denial_reason": None,
     # Current patients only, minus direct identifiers. The Type 2 history stays
     # in the warehouse; the report does not need 5,600 rows to show age bands.
-    "dim_patient": ["patient_sk", "patient_id", "gender", "age_band",
-                    "city", "state", "source_system", "is_current"],
+    "dim_patient": [
+        "patient_sk",
+        "patient_id",
+        "gender",
+        "age_band",
+        "city",
+        "state",
+        "source_system",
+        "is_current",
+    ],
     "fact_claim": None,
     "fact_ar_snapshot": None,
     "kpi_monthly_scorecard": None,
@@ -66,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     for table, columns in EXPORTS.items():
         try:
             df = read_parquet(spark, layer_path("gold", table, cfg))
-        except Exception as exc:                                # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             LOG.warning("skipping %s: %s", table, exc)
             continue
 
@@ -78,8 +93,13 @@ def main(argv: list[str] | None = None) -> int:
 
         # Single CSV file per table, written where Power BI can find it.
         tmp = out_root / f"_{table}_tmp"
-        (df.coalesce(1).write.mode("overwrite")
-           .option("header", True).option("escape", '"').csv(str(tmp)))
+        (
+            df.coalesce(1)
+            .write.mode("overwrite")
+            .option("header", True)
+            .option("escape", '"')
+            .csv(str(tmp))
+        )
         part = next(tmp.glob("part-*.csv"))
         target = out_root / f"{table}.csv"
         part.replace(target)
@@ -90,8 +110,9 @@ def main(argv: list[str] | None = None) -> int:
         rows = df.count()
         size_kb = target.stat().st_size / 1024
         manifest.append((table, rows, len(df.columns), size_kb))
-        LOG.info("%-28s %8s rows  %3d cols  %8.1f KB", table, f"{rows:,}",
-                 len(df.columns), size_kb)
+        LOG.info(
+            "%-28s %8s rows  %3d cols  %8.1f KB", table, f"{rows:,}", len(df.columns), size_kb
+        )
 
     total_mb = sum(m[3] for m in manifest) / 1024
     LOG.info("-" * 70)

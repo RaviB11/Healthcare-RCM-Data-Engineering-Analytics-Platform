@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import os
 import random
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -92,13 +91,37 @@ PAYERS = [
 # CARC = Claim Adjustment Reason Code (X12 835). Weighted toward the
 # denial reasons that actually dominate hospital A/R work queues.
 CARC_CODES = [
-    ("CO-16", "Claim/service lacks information or has submission/billing error", "Technical", True, 0.20),
-    ("CO-97", "Benefit for this service is included in another service already adjudicated", "Bundling", False, 0.10),
-    ("CO-50", "Non-covered service, not deemed a medical necessity", "Medical Necessity", True, 0.12),
+    (
+        "CO-16",
+        "Claim/service lacks information or has submission/billing error",
+        "Technical",
+        True,
+        0.20,
+    ),
+    (
+        "CO-97",
+        "Benefit for this service is included in another service already adjudicated",
+        "Bundling",
+        False,
+        0.10,
+    ),
+    (
+        "CO-50",
+        "Non-covered service, not deemed a medical necessity",
+        "Medical Necessity",
+        True,
+        0.12,
+    ),
     ("CO-29", "The time limit for filing has expired", "Timely Filing", False, 0.06),
     ("CO-18", "Exact duplicate claim or service", "Duplicate", True, 0.09),
     ("CO-197", "Precertification/authorization absent", "Authorization", True, 0.15),
-    ("CO-109", "Claim not covered by this payer/contractor", "Coordination of Benefits", True, 0.08),
+    (
+        "CO-109",
+        "Claim not covered by this payer/contractor",
+        "Coordination of Benefits",
+        True,
+        0.08,
+    ),
     ("PR-1", "Deductible amount", "Patient Responsibility", False, 0.09),
     ("PR-2", "Coinsurance amount", "Patient Responsibility", False, 0.06),
     ("CO-45", "Charge exceeds fee schedule/maximum allowable", "Contractual", False, 0.05),
@@ -116,9 +139,16 @@ DEPARTMENTS = [
 ]
 
 SPECIALTIES = [
-    "Internal Medicine", "Emergency Medicine", "Orthopedic Surgery",
-    "Cardiology", "Radiology", "General Surgery", "Obstetrics & Gynecology",
-    "Family Medicine", "Anesthesiology", "Physical Medicine",
+    "Internal Medicine",
+    "Emergency Medicine",
+    "Orthopedic Surgery",
+    "Cardiology",
+    "Radiology",
+    "General Surgery",
+    "Obstetrics & Gynecology",
+    "Family Medicine",
+    "Anesthesiology",
+    "Physical Medicine",
 ]
 
 ENCOUNTER_TYPES = ["Inpatient", "Outpatient", "Emergency", "Observation", "Telehealth"]
@@ -131,6 +161,7 @@ HISTORY_START = date(2024, 1, 1)
 # --------------------------------------------------------------------------
 # Helpers
 # --------------------------------------------------------------------------
+
 
 def write_csv(path: Path, header: list[str], rows: list[list]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -159,23 +190,32 @@ def maybe_null(value, probability: float):
 # Reference data
 # --------------------------------------------------------------------------
 
+
 def gen_reference(out: Path) -> None:
     print("\n[reference]")
-    write_csv(out / "reference" / "cpt_codes.csv",
-              ["cpt_code", "description", "service_category", "standard_charge_amount"],
-              [list(c) for c in CPT_CODES])
+    write_csv(
+        out / "reference" / "cpt_codes.csv",
+        ["cpt_code", "description", "service_category", "standard_charge_amount"],
+        [list(c) for c in CPT_CODES],
+    )
 
-    write_csv(out / "reference" / "icd10_codes.csv",
-              ["icd10_code", "description", "chapter"],
-              [list(c) for c in ICD10_CODES])
+    write_csv(
+        out / "reference" / "icd10_codes.csv",
+        ["icd10_code", "description", "chapter"],
+        [list(c) for c in ICD10_CODES],
+    )
 
-    write_csv(out / "reference" / "payers.csv",
-              ["payer_id", "payer_name", "payer_type", "contracted_rate", "avg_days_to_pay"],
-              [list(p) for p in PAYERS])
+    write_csv(
+        out / "reference" / "payers.csv",
+        ["payer_id", "payer_name", "payer_type", "contracted_rate", "avg_days_to_pay"],
+        [list(p) for p in PAYERS],
+    )
 
-    write_csv(out / "reference" / "carc_codes.csv",
-              ["carc_code", "description", "denial_category", "is_appealable"],
-              [[c[0], c[1], c[2], str(c[3]).lower()] for c in CARC_CODES])
+    write_csv(
+        out / "reference" / "carc_codes.csv",
+        ["carc_code", "description", "denial_category", "is_appealable"],
+        [[c[0], c[1], c[2], str(c[3]).lower()] for c in CARC_CODES],
+    )
 
 
 def gen_providers(out: Path, n: int) -> list[dict]:
@@ -184,29 +224,37 @@ def gen_providers(out: Path, n: int) -> list[dict]:
     providers = []
     for i in range(n):
         npi = f"1{random.randint(100000000, 999999999)}"
-        providers.append({
-            "npi": npi,
-            "provider_id": f"PRV{i + 1:04d}",
-            "first_name": fake.first_name(),
-            "last_name": fake.last_name(),
-            "credential": random.choice(["MD", "MD", "MD", "DO", "NP", "PA-C"]),
-            "specialty": random.choice(SPECIALTIES),
-            "department_id": random.choice(DEPARTMENTS)[0],
-            "hospital": random.choice(["HOSP_A", "HOSP_B"]),
-            "active_flag": "Y" if random.random() > 0.08 else "N",
-        })
-    write_csv(out / "reference" / "npi_providers.csv", list(providers[0].keys()),
-              [list(p.values()) for p in providers])
+        providers.append(
+            {
+                "npi": npi,
+                "provider_id": f"PRV{i + 1:04d}",
+                "first_name": fake.first_name(),
+                "last_name": fake.last_name(),
+                "credential": random.choice(["MD", "MD", "MD", "DO", "NP", "PA-C"]),
+                "specialty": random.choice(SPECIALTIES),
+                "department_id": random.choice(DEPARTMENTS)[0],
+                "hospital": random.choice(["HOSP_A", "HOSP_B"]),
+                "active_flag": "Y" if random.random() > 0.08 else "N",
+            }
+        )
+    write_csv(
+        out / "reference" / "npi_providers.csv",
+        list(providers[0].keys()),
+        [list(p.values()) for p in providers],
+    )
 
-    write_csv(out / "reference" / "departments.csv",
-              ["department_id", "department_name", "service_line"],
-              [list(d) for d in DEPARTMENTS])
+    write_csv(
+        out / "reference" / "departments.csv",
+        ["department_id", "department_name", "service_line"],
+        [list(d) for d in DEPARTMENTS],
+    )
     return providers
 
 
 # --------------------------------------------------------------------------
 # EMR extracts - two hospitals, two very different schemas
 # --------------------------------------------------------------------------
+
 
 def gen_patients(out: Path, n: int) -> list[dict]:
     """
@@ -223,57 +271,108 @@ def gen_patients(out: Path, n: int) -> list[dict]:
         hospital = "HOSP_A" if i % 2 == 0 else "HOSP_B"
         gender = random.choice(["M", "F"])
         dob = fake.date_of_birth(minimum_age=1, maximum_age=95)
-        patients.append({
-            "patient_key": f"P{i + 1:06d}",
-            "mrn": f"{'A' if hospital == 'HOSP_A' else 'B'}-{100000 + i}",
-            "first_name": fake.first_name_male() if gender == "M" else fake.first_name_female(),
-            "last_name": fake.last_name(),
-            "dob": dob,
-            "gender": gender,
-            "address": fake.street_address(),
-            "city": fake.city(),
-            "state": fake.state_abbr(),
-            "zip": fake.zipcode(),
-            "phone": fake.numerify("###-###-####"),
-            "email": fake.email(),
-            "hospital": hospital,
-            "updated_at": datetime.combine(rand_date(HISTORY_START, RUN_DATE), datetime.min.time()),
-        })
+        patients.append(
+            {
+                "patient_key": f"P{i + 1:06d}",
+                "mrn": f"{'A' if hospital == 'HOSP_A' else 'B'}-{100000 + i}",
+                "first_name": (
+                    fake.first_name_male() if gender == "M" else fake.first_name_female()
+                ),
+                "last_name": fake.last_name(),
+                "dob": dob,
+                "gender": gender,
+                "address": fake.street_address(),
+                "city": fake.city(),
+                "state": fake.state_abbr(),
+                "zip": fake.zipcode(),
+                "phone": fake.numerify("###-###-####"),
+                "email": fake.email(),
+                "hospital": hospital,
+                "updated_at": datetime.combine(
+                    rand_date(HISTORY_START, RUN_DATE), datetime.min.time()
+                ),
+            }
+        )
 
     # --- Hospital A extract -------------------------------------------------
     rows_a = []
     for p in (x for x in patients if x["hospital"] == "HOSP_A"):
-        rows_a.append([
-            p["patient_key"], p["mrn"], p["first_name"], p["last_name"],
-            p["dob"].isoformat(), p["gender"],
-            maybe_null(p["address"], 0.03), p["city"], p["state"],
-            maybe_null(p["zip"], 0.02), maybe_null(p["phone"], 0.06), p["email"],
-            p["updated_at"].strftime("%Y-%m-%d %H:%M:%S"),
-        ])
+        rows_a.append(
+            [
+                p["patient_key"],
+                p["mrn"],
+                p["first_name"],
+                p["last_name"],
+                p["dob"].isoformat(),
+                p["gender"],
+                maybe_null(p["address"], 0.03),
+                p["city"],
+                p["state"],
+                maybe_null(p["zip"], 0.02),
+                maybe_null(p["phone"], 0.06),
+                p["email"],
+                p["updated_at"].strftime("%Y-%m-%d %H:%M:%S"),
+            ]
+        )
     # duplicate records - the same MRN exported twice by the source
     rows_a += [list(r) for r in random.sample(rows_a, k=max(1, len(rows_a) // 100))]
-    write_csv(out / "emr" / "hospital_a" / "patients.csv",
-              ["PatientID", "MRN", "FirstName", "LastName", "DateOfBirth", "Gender",
-               "AddressLine1", "City", "State", "ZipCode", "PhoneNumber", "EmailAddress",
-               "LastUpdatedTimestamp"],
-              rows_a)
+    write_csv(
+        out / "emr" / "hospital_a" / "patients.csv",
+        [
+            "PatientID",
+            "MRN",
+            "FirstName",
+            "LastName",
+            "DateOfBirth",
+            "Gender",
+            "AddressLine1",
+            "City",
+            "State",
+            "ZipCode",
+            "PhoneNumber",
+            "EmailAddress",
+            "LastUpdatedTimestamp",
+        ],
+        rows_a,
+    )
 
     # --- Hospital B extract -------------------------------------------------
     rows_b = []
     for p in (x for x in patients if x["hospital"] == "HOSP_B"):
-        rows_b.append([
-            p["patient_key"], p["mrn"], f"{p['last_name']}, {p['first_name']}",
-            p["dob"].strftime("%m/%d/%Y"),
-            "MALE" if p["gender"] == "M" else "FEMALE",
-            maybe_null(p["address"], 0.04), p["city"], p["state"],
-            maybe_null(p["zip"], 0.02), maybe_null(p["phone"], 0.08), p["email"],
-            p["updated_at"].strftime("%m/%d/%Y %H:%M"),
-        ])
-    write_csv(out / "emr" / "hospital_b" / "patients.csv",
-              ["id", "medical_record_no", "full_name", "birth_date", "sex",
-               "street", "city_name", "state_code", "postal_code", "contact_number",
-               "email_id", "modified_ts"],
-              rows_b)
+        rows_b.append(
+            [
+                p["patient_key"],
+                p["mrn"],
+                f"{p['last_name']}, {p['first_name']}",
+                p["dob"].strftime("%m/%d/%Y"),
+                "MALE" if p["gender"] == "M" else "FEMALE",
+                maybe_null(p["address"], 0.04),
+                p["city"],
+                p["state"],
+                maybe_null(p["zip"], 0.02),
+                maybe_null(p["phone"], 0.08),
+                p["email"],
+                p["updated_at"].strftime("%m/%d/%Y %H:%M"),
+            ]
+        )
+    write_csv(
+        out / "emr" / "hospital_b" / "patients.csv",
+        [
+            "id",
+            "medical_record_no",
+            "full_name",
+            "birth_date",
+            "sex",
+            "street",
+            "city_name",
+            "state_code",
+            "postal_code",
+            "contact_number",
+            "email_id",
+            "modified_ts",
+        ],
+        rows_b,
+    )
 
     # --- Day-2 delta: address / phone changes drive SCD2 --------------------
     hosp_a = [p for p in patients if p["hospital"] == "HOSP_A"]
@@ -283,67 +382,140 @@ def gen_patients(out: Path, n: int) -> list[dict]:
         new_addr = fake.street_address()
         new_city = fake.city()
         p_updated = datetime.combine(RUN_DATE, datetime.min.time()) + timedelta(hours=6)
-        delta_rows.append([
-            p["patient_key"], p["mrn"], p["first_name"], p["last_name"],
-            p["dob"].isoformat(), p["gender"], new_addr, new_city, p["state"],
-            fake.zipcode(), fake.numerify("###-###-####"), p["email"],
-            p_updated.strftime("%Y-%m-%d %H:%M:%S"),
-        ])
-    write_csv(out / "emr" / "hospital_a" / "patients_delta.csv",
-              ["PatientID", "MRN", "FirstName", "LastName", "DateOfBirth", "Gender",
-               "AddressLine1", "City", "State", "ZipCode", "PhoneNumber", "EmailAddress",
-               "LastUpdatedTimestamp"],
-              delta_rows)
+        delta_rows.append(
+            [
+                p["patient_key"],
+                p["mrn"],
+                p["first_name"],
+                p["last_name"],
+                p["dob"].isoformat(),
+                p["gender"],
+                new_addr,
+                new_city,
+                p["state"],
+                fake.zipcode(),
+                fake.numerify("###-###-####"),
+                p["email"],
+                p_updated.strftime("%Y-%m-%d %H:%M:%S"),
+            ]
+        )
+    write_csv(
+        out / "emr" / "hospital_a" / "patients_delta.csv",
+        [
+            "PatientID",
+            "MRN",
+            "FirstName",
+            "LastName",
+            "DateOfBirth",
+            "Gender",
+            "AddressLine1",
+            "City",
+            "State",
+            "ZipCode",
+            "PhoneNumber",
+            "EmailAddress",
+            "LastUpdatedTimestamp",
+        ],
+        delta_rows,
+    )
     return patients
 
 
-def gen_encounters(out: Path, patients: list[dict], providers: list[dict], n: int) -> list[dict]:
+def gen_encounters(
+    out: Path, patients: list[dict], providers: list[dict], n: int
+) -> list[dict]:
     print("\n[encounters]")
     encounters = []
     for i in range(n):
         p = random.choice(patients)
-        prov = random.choice([x for x in providers if x["hospital"] == p["hospital"]] or providers)
+        prov = random.choice(
+            [x for x in providers if x["hospital"] == p["hospital"]] or providers
+        )
         etype = random.choices(ENCOUNTER_TYPES, weights=[0.12, 0.45, 0.22, 0.09, 0.12])[0]
         start = rand_date(HISTORY_START, RUN_DATE - timedelta(days=5))
         los = 0 if etype in ("Outpatient", "Telehealth") else random.randint(0, 9)
-        encounters.append({
-            "encounter_id": f"ENC{i + 1:07d}",
-            "patient_key": p["patient_key"],
-            "provider_id": prov["provider_id"],
-            "department_id": prov["department_id"],
-            "encounter_type": etype,
-            "admit_date": start,
-            "discharge_date": start + timedelta(days=los),
-            "primary_diagnosis": random.choice(ICD10_CODES)[0],
-            "hospital": p["hospital"],
-            "insurance_payer_id": weighted_choice(PAYERS, 3)[0],
-        })
+        encounters.append(
+            {
+                "encounter_id": f"ENC{i + 1:07d}",
+                "patient_key": p["patient_key"],
+                "provider_id": prov["provider_id"],
+                "department_id": prov["department_id"],
+                "encounter_type": etype,
+                "admit_date": start,
+                "discharge_date": start + timedelta(days=los),
+                "primary_diagnosis": random.choice(ICD10_CODES)[0],
+                "hospital": p["hospital"],
+                "insurance_payer_id": weighted_choice(PAYERS, 3)[0],
+            }
+        )
 
     for hosp, fname, header in [
-        ("HOSP_A", "encounters.csv",
-         ["EncounterID", "PatientID", "ProviderID", "DepartmentID", "EncounterType",
-          "AdmitDate", "DischargeDate", "PrimaryDiagnosisCode", "PayerID"]),
-        ("HOSP_B", "encounters.csv",
-         ["visit_id", "id", "rendering_provider", "dept_id", "visit_type",
-          "admission_dt", "discharge_dt", "primary_dx", "insurance_id"]),
+        (
+            "HOSP_A",
+            "encounters.csv",
+            [
+                "EncounterID",
+                "PatientID",
+                "ProviderID",
+                "DepartmentID",
+                "EncounterType",
+                "AdmitDate",
+                "DischargeDate",
+                "PrimaryDiagnosisCode",
+                "PayerID",
+            ],
+        ),
+        (
+            "HOSP_B",
+            "encounters.csv",
+            [
+                "visit_id",
+                "id",
+                "rendering_provider",
+                "dept_id",
+                "visit_type",
+                "admission_dt",
+                "discharge_dt",
+                "primary_dx",
+                "insurance_id",
+            ],
+        ),
     ]:
         rows = []
         for e in (x for x in encounters if x["hospital"] == hosp):
             if hosp == "HOSP_A":
-                rows.append([e["encounter_id"], e["patient_key"], e["provider_id"],
-                             e["department_id"], e["encounter_type"],
-                             e["admit_date"].isoformat(), e["discharge_date"].isoformat(),
-                             e["primary_diagnosis"], e["insurance_payer_id"]])
+                rows.append(
+                    [
+                        e["encounter_id"],
+                        e["patient_key"],
+                        e["provider_id"],
+                        e["department_id"],
+                        e["encounter_type"],
+                        e["admit_date"].isoformat(),
+                        e["discharge_date"].isoformat(),
+                        e["primary_diagnosis"],
+                        e["insurance_payer_id"],
+                    ]
+                )
             else:
                 # Hospital B also ships a handful of discharge dates BEFORE
                 # the admit date - a classic source-system defect.
                 disch = e["discharge_date"]
                 if random.random() < 0.004:
                     disch = e["admit_date"] - timedelta(days=2)
-                rows.append([e["encounter_id"], e["patient_key"], e["provider_id"],
-                             e["department_id"], e["encounter_type"].upper(),
-                             e["admit_date"].strftime("%m/%d/%Y"), disch.strftime("%m/%d/%Y"),
-                             e["primary_diagnosis"], e["insurance_payer_id"]])
+                rows.append(
+                    [
+                        e["encounter_id"],
+                        e["patient_key"],
+                        e["provider_id"],
+                        e["department_id"],
+                        e["encounter_type"].upper(),
+                        e["admit_date"].strftime("%m/%d/%Y"),
+                        disch.strftime("%m/%d/%Y"),
+                        e["primary_diagnosis"],
+                        e["insurance_payer_id"],
+                    ]
+                )
         folder = "hospital_a" if hosp == "HOSP_A" else "hospital_b"
         write_csv(out / "emr" / folder / fname, header, rows)
     return encounters
@@ -352,6 +524,7 @@ def gen_encounters(out: Path, patients: list[dict], providers: list[dict], n: in
 # --------------------------------------------------------------------------
 # Billing system: claims, claim lines, transactions, remittance
 # --------------------------------------------------------------------------
+
 
 def gen_claims_and_transactions(out: Path, encounters: list[dict], providers: list[dict]):
     print("\n[claims / transactions / remittance]")
@@ -385,12 +558,18 @@ def gen_claims_and_transactions(out: Path, encounters: list[dict], providers: li
             charge = round(cpt[3] * units * random.uniform(0.95, 1.25), 2)
             total_charge += charge
             line_seq += 1
-            claim_lines.append([
-                f"CLN{line_seq:08d}", claim_id, cpt[0],
-                random.choice(ICD10_CODES)[0], units, f"{charge:.2f}",
-                service_date.isoformat(),
-                random.choice(["", "", "", "25", "59", "RT", "LT"]),  # CPT modifier
-            ])
+            claim_lines.append(
+                [
+                    f"CLN{line_seq:08d}",
+                    claim_id,
+                    cpt[0],
+                    random.choice(ICD10_CODES)[0],
+                    units,
+                    f"{charge:.2f}",
+                    service_date.isoformat(),
+                    random.choice(["", "", "", "25", "59", "RT", "LT"]),  # CPT modifier
+                ]
+            )
         total_charge = round(total_charge, 2)
 
         # ---- adjudication outcome ----------------------------------------
@@ -424,51 +603,103 @@ def gen_claims_and_transactions(out: Path, encounters: list[dict], providers: li
                 remit_date = remit_date + timedelta(days=random.randint(20, 60))
                 if remit_date > RUN_DATE:
                     remit_date, status, paid, patient_resp = (
-                        submit_date + timedelta(days=days_to_pay), "APPEALED", 0.0, 0.0)
+                        submit_date + timedelta(days=days_to_pay),
+                        "APPEALED",
+                        0.0,
+                        0.0,
+                    )
             else:
                 status = "DENIED"
                 paid, patient_resp = 0.0, 0.0
         else:
-            coins_rate = 0.0 if payer[2] == "Government" else random.choice([0.0, 0.0, 0.1, 0.2])
+            coins_rate = (
+                0.0 if payer[2] == "Government" else random.choice([0.0, 0.0, 0.1, 0.2])
+            )
             patient_resp = round(allowed_amount * coins_rate, 2)
             paid = round(allowed_amount - patient_resp, 2)
             status = "PAID" if patient_resp == 0 else "PARTIALLY_PAID"
             carc = "PR-2" if patient_resp > 0 else ""
 
-        claims.append([
-            claim_id, enc["encounter_id"], enc["patient_key"], enc["insurance_payer_id"],
-            enc["provider_id"], service_date.isoformat(), submit_date.isoformat(),
-            f"{total_charge:.2f}", f"{allowed_amount:.2f}", status,
-            "PROFESSIONAL" if enc["encounter_type"] != "Inpatient" else "INSTITUTIONAL",
-            enc["hospital"],
-        ])
+        claims.append(
+            [
+                claim_id,
+                enc["encounter_id"],
+                enc["patient_key"],
+                enc["insurance_payer_id"],
+                enc["provider_id"],
+                service_date.isoformat(),
+                submit_date.isoformat(),
+                f"{total_charge:.2f}",
+                f"{allowed_amount:.2f}",
+                status,
+                "PROFESSIONAL" if enc["encounter_type"] != "Inpatient" else "INSTITUTIONAL",
+                enc["hospital"],
+            ]
+        )
 
         # ---- transaction ledger: charge, payment, adjustment --------------
         txn_seq += 1
-        transactions.append([f"TXN{txn_seq:08d}", claim_id, enc["encounter_id"],
-                             enc["patient_key"], "CHARGE", f"{total_charge:.2f}",
-                             submit_date.isoformat(), enc["insurance_payer_id"], ""])
+        transactions.append(
+            [
+                f"TXN{txn_seq:08d}",
+                claim_id,
+                enc["encounter_id"],
+                enc["patient_key"],
+                "CHARGE",
+                f"{total_charge:.2f}",
+                submit_date.isoformat(),
+                enc["insurance_payer_id"],
+                "",
+            ]
+        )
 
         if settled:
             txn_seq += 1
-            transactions.append([f"TXN{txn_seq:08d}", claim_id, enc["encounter_id"],
-                                 enc["patient_key"], "CONTRACTUAL_ADJUSTMENT",
-                                 f"{-contractual_adj:.2f}", remit_date.isoformat(),
-                                 enc["insurance_payer_id"], "CO-45"])
+            transactions.append(
+                [
+                    f"TXN{txn_seq:08d}",
+                    claim_id,
+                    enc["encounter_id"],
+                    enc["patient_key"],
+                    "CONTRACTUAL_ADJUSTMENT",
+                    f"{-contractual_adj:.2f}",
+                    remit_date.isoformat(),
+                    enc["insurance_payer_id"],
+                    "CO-45",
+                ]
+            )
             if paid > 0:
                 txn_seq += 1
-                transactions.append([f"TXN{txn_seq:08d}", claim_id, enc["encounter_id"],
-                                     enc["patient_key"], "INSURANCE_PAYMENT",
-                                     f"{-paid:.2f}", remit_date.isoformat(),
-                                     enc["insurance_payer_id"], ""])
+                transactions.append(
+                    [
+                        f"TXN{txn_seq:08d}",
+                        claim_id,
+                        enc["encounter_id"],
+                        enc["patient_key"],
+                        "INSURANCE_PAYMENT",
+                        f"{-paid:.2f}",
+                        remit_date.isoformat(),
+                        enc["insurance_payer_id"],
+                        "",
+                    ]
+                )
             if patient_resp > 0 and random.random() < 0.55:
                 pay_date = remit_date + timedelta(days=random.randint(10, 75))
                 if pay_date <= RUN_DATE:
                     txn_seq += 1
-                    transactions.append([f"TXN{txn_seq:08d}", claim_id, enc["encounter_id"],
-                                         enc["patient_key"], "PATIENT_PAYMENT",
-                                         f"{-patient_resp:.2f}", pay_date.isoformat(),
-                                         enc["insurance_payer_id"], ""])
+                    transactions.append(
+                        [
+                            f"TXN{txn_seq:08d}",
+                            claim_id,
+                            enc["encounter_id"],
+                            enc["patient_key"],
+                            "PATIENT_PAYMENT",
+                            f"{-patient_resp:.2f}",
+                            pay_date.isoformat(),
+                            enc["insurance_payer_id"],
+                            "",
+                        ]
+                    )
 
             # --- write-offs: aged A/R has to leave the books somehow -----
             # Bad debt on denials that were worked and lost, plus small
@@ -483,15 +714,25 @@ def gen_claims_and_transactions(out: Path, encounters: list[dict], providers: li
                 wo_date = remit_date + timedelta(days=random.randint(75, 150))
                 if wo_date <= RUN_DATE and random.random() < 0.62 and remaining > 0:
                     txn_seq += 1
-                    transactions.append([f"TXN{txn_seq:08d}", claim_id, enc["encounter_id"],
-                                         enc["patient_key"], "WRITEOFF",
-                                         f"{-remaining:.2f}", wo_date.isoformat(),
-                                         enc["insurance_payer_id"], carc])
+                    transactions.append(
+                        [
+                            f"TXN{txn_seq:08d}",
+                            claim_id,
+                            enc["encounter_id"],
+                            enc["patient_key"],
+                            "WRITEOFF",
+                            f"{-remaining:.2f}",
+                            wo_date.isoformat(),
+                            enc["insurance_payer_id"],
+                            carc,
+                        ]
+                    )
             elif patient_resp > 0:
                 # Unpaid patient balance: small ones written off, larger ones
                 # sent to bad debt after ageing.
-                unpaid = not any(t[1] == claim_id and t[4] == "PATIENT_PAYMENT"
-                                 for t in transactions[-4:])
+                unpaid = not any(
+                    t[1] == claim_id and t[4] == "PATIENT_PAYMENT" for t in transactions[-4:]
+                )
                 if unpaid:
                     threshold = 15.00
                     if patient_resp <= threshold:
@@ -500,26 +741,42 @@ def gen_claims_and_transactions(out: Path, encounters: list[dict], providers: li
                         wo_date = remit_date + timedelta(days=random.randint(120, 210))
                     if wo_date <= RUN_DATE and random.random() < 0.55:
                         txn_seq += 1
-                        transactions.append([f"TXN{txn_seq:08d}", claim_id,
-                                             enc["encounter_id"], enc["patient_key"],
-                                             "WRITEOFF", f"{-patient_resp:.2f}",
-                                             wo_date.isoformat(),
-                                             enc["insurance_payer_id"], "BAD_DEBT"])
+                        transactions.append(
+                            [
+                                f"TXN{txn_seq:08d}",
+                                claim_id,
+                                enc["encounter_id"],
+                                enc["patient_key"],
+                                "WRITEOFF",
+                                f"{-patient_resp:.2f}",
+                                wo_date.isoformat(),
+                                enc["insurance_payer_id"],
+                                "BAD_DEBT",
+                            ]
+                        )
 
-            remits.append([
-                f"ERA{claim_seq:07d}", claim_id, enc["insurance_payer_id"],
-                remit_date.isoformat(), f"{total_charge:.2f}", f"{allowed_amount:.2f}",
-                f"{paid:.2f}", f"{patient_resp:.2f}", carc,
-                "1" if status == "DENIED" else "0",
-            ])
+            remits.append(
+                [
+                    f"ERA{claim_seq:07d}",
+                    claim_id,
+                    enc["insurance_payer_id"],
+                    remit_date.isoformat(),
+                    f"{total_charge:.2f}",
+                    f"{allowed_amount:.2f}",
+                    f"{paid:.2f}",
+                    f"{patient_resp:.2f}",
+                    carc,
+                    "1" if status == "DENIED" else "0",
+                ]
+            )
 
     # ---- inject defects ---------------------------------------------------
-    for _ in range(int(len(claims) * 0.004)):                     # orphan FK
+    for _ in range(int(len(claims) * 0.004)):  # orphan FK
         c = list(random.choice(claims))
         c[0] = f"CLM9{random.randint(100000, 999999)}"
         c[3] = "PAY999"
         claims.append(c)
-    for _ in range(int(len(transactions) * 0.002)):               # negative charge
+    for _ in range(int(len(transactions) * 0.002)):  # negative charge
         t = list(random.choice(transactions))
         t[0] = f"TXN9{random.randint(1000000, 9999999)}"
         t[4], t[5] = "CHARGE", "-501.00"
@@ -528,37 +785,86 @@ def gen_claims_and_transactions(out: Path, encounters: list[dict], providers: li
 
     random.shuffle(transactions)
 
-    write_csv(out / "billing" / "claims.csv",
-              ["claim_id", "encounter_id", "patient_id", "payer_id", "provider_id",
-               "service_date", "submission_date", "total_charge_amount",
-               "allowed_amount", "claim_status", "claim_type", "source_hospital"],
-              claims)
+    write_csv(
+        out / "billing" / "claims.csv",
+        [
+            "claim_id",
+            "encounter_id",
+            "patient_id",
+            "payer_id",
+            "provider_id",
+            "service_date",
+            "submission_date",
+            "total_charge_amount",
+            "allowed_amount",
+            "claim_status",
+            "claim_type",
+            "source_hospital",
+        ],
+        claims,
+    )
 
-    write_csv(out / "billing" / "claim_lines.csv",
-              ["claim_line_id", "claim_id", "cpt_code", "icd10_code", "units",
-               "line_charge_amount", "service_date", "modifier"],
-              claim_lines)
+    write_csv(
+        out / "billing" / "claim_lines.csv",
+        [
+            "claim_line_id",
+            "claim_id",
+            "cpt_code",
+            "icd10_code",
+            "units",
+            "line_charge_amount",
+            "service_date",
+            "modifier",
+        ],
+        claim_lines,
+    )
 
-    write_csv(out / "billing" / "transactions.csv",
-              ["transaction_id", "claim_id", "encounter_id", "patient_id",
-               "transaction_type", "transaction_amount", "post_date", "payer_id",
-               "adjustment_reason_code"],
-              transactions)
+    write_csv(
+        out / "billing" / "transactions.csv",
+        [
+            "transaction_id",
+            "claim_id",
+            "encounter_id",
+            "patient_id",
+            "transaction_type",
+            "transaction_amount",
+            "post_date",
+            "payer_id",
+            "adjustment_reason_code",
+        ],
+        transactions,
+    )
 
-    write_csv(out / "remittance" / "era_835.csv",
-              ["remittance_id", "claim_id", "payer_id", "remit_date",
-               "billed_amount", "allowed_amount", "paid_amount",
-               "patient_responsibility", "carc_code", "denied_flag"],
-              remits)
+    write_csv(
+        out / "remittance" / "era_835.csv",
+        [
+            "remittance_id",
+            "claim_id",
+            "payer_id",
+            "remit_date",
+            "billed_amount",
+            "allowed_amount",
+            "paid_amount",
+            "patient_responsibility",
+            "carc_code",
+            "denied_flag",
+        ],
+        remits,
+    )
 
 
 # --------------------------------------------------------------------------
 
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Generate synthetic healthcare RCM landing data")
     ap.add_argument("--out", default="data/landing", help="output directory")
-    ap.add_argument("--scale", type=float, default=1.0,
-                    help="row multiplier (1.0 ~= 5k patients / 20k encounters)")
+    ap.add_argument(
+        "--scale",
+        type=float,
+        default=1.0,
+        help="row multiplier (1.0 ~= 5k patients / 20k encounters)",
+    )
     args = ap.parse_args()
 
     out = Path(args.out)
